@@ -14,8 +14,6 @@ class ShkrylevaSVecMinValPerfTests : public ppc::util::BaseRunPerfTests<InType, 
  public:
   static constexpr size_t kVectorSize = 100000000;
 
-  ShkrylevaSVecMinValPerfTests() : expected_min_{} {}
-
  protected:
   void SetUp() override {
     std::random_device dev;
@@ -41,7 +39,7 @@ class ShkrylevaSVecMinValPerfTests : public ppc::util::BaseRunPerfTests<InType, 
 
  private:
   InType input_data_;
-  OutType expected_min_;
+  OutType expected_min_{};
 };
 
 TEST_P(ShkrylevaSVecMinValPerfTests, RunPerfModes) {  // NOLINT
