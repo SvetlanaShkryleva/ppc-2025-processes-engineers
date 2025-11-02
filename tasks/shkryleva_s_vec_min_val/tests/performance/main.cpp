@@ -29,7 +29,7 @@ class ShkrylevaSVecMinValPerfTests : public ppc::util::BaseRunPerfTests<InType, 
     input_data_[kVectorSize / 2] = expected_min_;
   }
 
-  auto CheckTestOutputData(OutType &output_data) const -> bool final {  // NOLINT
+  auto CheckTestOutputData(OutType &output_data) -> bool final {  // NOLINT
     return expected_min_ == output_data;
   }
 
