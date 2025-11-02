@@ -2,9 +2,7 @@
 
 #include <mpi.h>
 
-#include <algorithm>
 #include <climits>
-#include <cstddef>
 #include <vector>
 
 #include "shkryleva_s_vec_min_val/common/include/common.hpp"
@@ -81,9 +79,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
 
   int local_min = INT_MAX;
   for (int value : local_data) {
-    if (value < local_min) {
-      local_min = value;
-    }
+    local_min = (value < local_min) ? value : local_min;
   }
 
   int global_min = INT_MAX;
