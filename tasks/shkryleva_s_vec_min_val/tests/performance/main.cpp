@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <random>
-#include <vector>
 
 #include "shkryleva_s_vec_min_val/common/include/common.hpp"
 #include "shkryleva_s_vec_min_val/mpi/include/ops_mpi.hpp"
@@ -38,8 +38,8 @@ class ShkrylevaSVecMinValPerfTests : public ppc::util::BaseRunPerfTests<InType, 
   }
 
  private:
-  InType input_data_{};
-  OutType expected_min_{};
+  InType input_data_;
+  OutType expected_min_;
 };
 
 TEST_P(ShkrylevaSVecMinValPerfTests, RunPerfModes) {  // NOLINT

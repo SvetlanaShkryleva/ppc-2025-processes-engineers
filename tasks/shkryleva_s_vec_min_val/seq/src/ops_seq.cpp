@@ -4,6 +4,8 @@
 #include <climits>
 #include <vector>
 
+#include "shkryleva_s_vec_min_val/common/include/common.hpp"
+
 namespace shkryleva_s_vec_min_val {
 
 ShkrylevaSVecMinValSEQ::ShkrylevaSVecMinValSEQ(const InType &in) {

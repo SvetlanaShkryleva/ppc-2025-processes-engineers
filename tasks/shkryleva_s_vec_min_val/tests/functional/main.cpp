@@ -1,13 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
-#include <numeric>
 #include <string>
 #include <tuple>
-#include <utility>
-#include <vector>
 
 #include "shkryleva_s_vec_min_val/common/include/common.hpp"
 #include "shkryleva_s_vec_min_val/mpi/include/ops_mpi.hpp"
@@ -65,8 +61,8 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
   }
 
  private:
-  InType input_data_{};
-  OutType expected_output_{};
+  InType input_data_;
+  OutType expected_output_;
 };
 
 namespace {

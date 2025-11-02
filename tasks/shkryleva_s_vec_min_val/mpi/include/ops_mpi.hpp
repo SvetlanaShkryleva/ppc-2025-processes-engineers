@@ -1,7 +1,5 @@
 #pragma once
 
-#include <mpi.h>
-
 #include "shkryleva_s_vec_min_val/common/include/common.hpp"
 #include "task/include/task.hpp"
 
