@@ -50,7 +50,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   size_t base_local_size = total_size / world_size;
   size_t remainder = total_size % world_size;
 
-  std::vector<int> sendcounts(world_size);  // NOLINT
+  std::vector<int> sendcounts(world_size);     // NOLINT
   std::vector<int> displacements(world_size);  // NOLINT
 
   size_t offset = 0;

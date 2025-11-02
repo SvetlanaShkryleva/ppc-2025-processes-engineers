@@ -56,7 +56,7 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
     }
   }
 
-  auto CheckTestOutputData(OutType &output_data) -> bool final const {  // NOLINT
+  auto CheckTestOutputData(OutType &output_data) -> bool const final {  // NOLINT
     return (expected_output_ == output_data);
   }
 
@@ -75,13 +75,9 @@ TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {  // NOLINT
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 5> kTestParam = {
-    std::make_tuple(0, "small_vector"), 
-    std::make_tuple(1, "negative_vector"),
-    std::make_tuple(2, "single_element"), 
-    std::make_tuple(3, "all_equal"),
-    std::make_tuple(4, "large_values")
-};
+const std::array<TestType, 5> kTestParam = {std::make_tuple(0, "small_vector"), std::make_tuple(1, "negative_vector"),
+                                            std::make_tuple(2, "single_element"), std::make_tuple(3, "all_equal"),
+                                            std::make_tuple(4, "large_values")};
 
 const auto kTestTasksList = std::tuple_cat(
     ppc::util::AddFuncTask<ShkrylevaSVecMinValMPI, InType>(kTestParam, PPC_SETTINGS_shkryleva_s_vec_min_val),
@@ -92,11 +88,7 @@ const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 const auto kPerfTestName = ShkrylevaRunFuncTestsProcesses::PrintFuncTestName<ShkrylevaRunFuncTestsProcesses>;
 
 INSTANTIATE_TEST_SUITE_P(  // NOLINT
-    VectorMinTests, 
-    ShkrylevaRunFuncTestsProcesses, 
-    kGtestValues, 
-    kPerfTestName
-);
+    VectorMinTests, ShkrylevaRunFuncTestsProcesses, kGtestValues, kPerfTestName);
 
 }  // namespace
 
