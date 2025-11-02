@@ -60,7 +60,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
 
   size_t offset = 0;
   for (int i = 0; i < world_size; ++i) {
-    sendcounts[i] = static_cast<int>(base_local_size + (i < static_cast<int>(remainder) ? 1 : 0));
+    sendcounts[i] = static_cast<int>(base_local_size + (static_cast<size_t>(i) < remainder ? 1 : 0));
     displacements[i] = static_cast<int>(offset);
     offset += sendcounts[i];
   }
