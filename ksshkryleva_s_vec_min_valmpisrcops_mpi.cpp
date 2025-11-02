@@ -1,0 +1,66 @@
+warning: in the working copy of 'tasks/shkryleva_s_vec_min_val/mpi/src/ops_mpi.cpp', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tasks/shkryleva_s_vec_min_val/tests/functional/main.cpp', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tasks/shkryleva_s_vec_min_val/tests/performance/main.cpp', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/tasks/shkryleva_s_vec_min_val/mpi/src/ops_mpi.cpp b/tasks/shkryleva_s_vec_min_val/mpi/src/ops_mpi.cpp[m
+[1mindex 90f33c3..4f74f42 100644[m
+[1m--- a/tasks/shkryleva_s_vec_min_val/mpi/src/ops_mpi.cpp[m
+[1m+++ b/tasks/shkryleva_s_vec_min_val/mpi/src/ops_mpi.cpp[m
+[36m@@ -50,7 +50,7 @@[m [mbool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT[m
+   size_t base_local_size = total_size / world_size;[m
+   size_t remainder = total_size % world_size;[m
+ [m
+[31m-  std::vector<int> sendcounts(world_size);  // NOLINT[m
+[32m+[m[32m  std::vector<int> sendcounts(world_size);     // NOLINT[m
+   std::vector<int> displacements(world_size);  // NOLINT[m
+ [m
+   size_t offset = 0;[m
+[1mdiff --git a/tasks/shkryleva_s_vec_min_val/tests/functional/main.cpp b/tasks/shkryleva_s_vec_min_val/tests/functional/main.cpp[m
+[1mindex 928e30c..9592dd5 100644[m
+[1m--- a/tasks/shkryleva_s_vec_min_val/tests/functional/main.cpp[m
+[1m+++ b/tasks/shkryleva_s_vec_min_val/tests/functional/main.cpp[m
+[36m@@ -75,13 +75,9 @@[m [mTEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {  // NOLINT[m
+   ExecuteTest(GetParam());[m
+ }[m
+ [m
+[31m-const std::array<TestType, 5> kTestParam = {[m
+[31m-    std::make_tuple(0, "small_vector"), [m
+[31m-    std::make_tuple(1, "negative_vector"),[m
+[31m-    std::make_tuple(2, "single_element"), [m
+[31m-    std::make_tuple(3, "all_equal"),[m
+[31m-    std::make_tuple(4, "large_values")[m
+[31m-};[m
+[32m+[m[32mconst std::array<TestType, 5> kTestParam = {std::make_tuple(0, "small_vector"), std::make_tuple(1, "negative_vector"),[m
+[32m+[m[32m                                            std::make_tuple(2, "single_element"), std::make_tuple(3, "all_equal"),[m
+[32m+[m[32m                                            std::make_tuple(4, "large_values")};[m
+ [m
+ const auto kTestTasksList = std::tuple_cat([m
+     ppc::util::AddFuncTask<ShkrylevaSVecMinValMPI, InType>(kTestParam, PPC_SETTINGS_shkryleva_s_vec_min_val),[m
+[36m@@ -92,11 +88,7 @@[m [mconst auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);[m
+ const auto kPerfTestName = ShkrylevaRunFuncTestsProcesses::PrintFuncTestName<ShkrylevaRunFuncTestsProcesses>;[m
+ [m
+ INSTANTIATE_TEST_SUITE_P(  // NOLINT[m
+[31m-    VectorMinTests, [m
+[31m-    ShkrylevaRunFuncTestsProcesses, [m
+[31m-    kGtestValues, [m
+[31m-    kPerfTestName[m
+[31m-);[m
+[32m+[m[32m    VectorMinTests, ShkrylevaRunFuncTestsProcesses, kGtestValues, kPerfTestName);[m
+ [m
+ }  // namespace[m
+ [m
+[1mdiff --git a/tasks/shkryleva_s_vec_min_val/tests/performance/main.cpp b/tasks/shkryleva_s_vec_min_val/tests/performance/main.cpp[m
+[1mindex dbf54a0..dc38137 100644[m
+[1m--- a/tasks/shkryleva_s_vec_min_val/tests/performance/main.cpp[m
+[1m+++ b/tasks/shkryleva_s_vec_min_val/tests/performance/main.cpp[m
+[36m@@ -54,10 +54,6 @@[m [mconst auto kGtestValues = ppc::util::TupleToGTestValues(kAllPerfTasks);[m
+ const auto kPerfTestName = ShkrylevaSVecMinValPerfTests::CustomPerfTestName;[m
+ [m
+ INSTANTIATE_TEST_SUITE_P(  // NOLINT[m
+[31m-    RunModeTests, [m
+[31m-    ShkrylevaSVecMinValPerfTests, [m
+[31m-    kGtestValues, [m
+[31m-    kPerfTestName[m
+[31m-);[m
+[32m+[m[32m    RunModeTests, ShkrylevaSVecMinValPerfTests, kGtestValues, kPerfTestName);[m
+ [m
+ }  // namespace shkryleva_s_vec_min_val[m

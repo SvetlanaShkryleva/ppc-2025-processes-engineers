@@ -56,7 +56,7 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
     }
   }
 
-  auto CheckTestOutputData(OutType &output_data) -> bool const final {  // NOLINT
+  auto CheckTestOutputData(OutType &output_data) const -> bool final {  // NOLINT
     return (expected_output_ == output_data);
   }
 
