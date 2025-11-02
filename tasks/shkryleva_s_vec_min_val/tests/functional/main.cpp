@@ -15,6 +15,8 @@ namespace shkryleva_s_vec_min_val {
 
 class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
+  ShkrylevaRunFuncTestsProcesses() : expected_output_{} {}
+
   static auto PrintTestParam(const TestType &test_param) -> std::string {
     return std::to_string(std::get<0>(test_param)) + "_" + std::get<1>(test_param);
   }
