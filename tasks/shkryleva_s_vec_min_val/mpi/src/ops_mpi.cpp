@@ -12,14 +12,14 @@ ShkrylevaSVecMinValMPI::ShkrylevaSVecMinValMPI(const InType &in) {
   GetOutput() = 0;
 }
 
-bool ShkrylevaSVecMinValMPI::ValidationImpl() {
+bool ShkrylevaSVecMinValMPI::ValidationImpl() {  // NOLINT
   return (!GetInput().empty()) && (GetOutput() == 0);
 }
 
-bool ShkrylevaSVecMinValMPI::PreProcessingImpl() {
-  int initialized;
+bool ShkrylevaSVecMinValMPI::PreProcessingImpl() {  // NOLINT
+  int initialized = 0;
   MPI_Initialized(&initialized);
-  if (!initialized) {
+  if (initialized == 0) {
     MPI_Init(nullptr, nullptr);
   }
 
@@ -27,16 +27,17 @@ bool ShkrylevaSVecMinValMPI::PreProcessingImpl() {
   return true;
 }
 
-bool ShkrylevaSVecMinValMPI::RunImpl() {
+bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   if (GetInput().empty()) {
     return false;
   }
 
-  int world_rank, world_size;
+  int world_rank = 0;
+  int world_size = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-  const std::vector<int> *input_data_ptr = nullptr;
+  const std::vector<int> *input_data_ptr = nullptr;  // NOLINT
   size_t total_size = 0;
 
   if (world_rank == 0) {
@@ -49,17 +50,17 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
   size_t base_local_size = total_size / world_size;
   size_t remainder = total_size % world_size;
 
-  std::vector<int> sendcounts(world_size);
-  std::vector<int> displacements(world_size);
+  std::vector<int> sendcounts(world_size);  // NOLINT
+  std::vector<int> displacements(world_size);  // NOLINT
 
   size_t offset = 0;
   for (int i = 0; i < world_size; ++i) {
-    sendcounts[i] = base_local_size + (i < static_cast<int>(remainder) ? 1 : 0);
+    sendcounts[i] = static_cast<int>(base_local_size + (i < static_cast<int>(remainder) ? 1 : 0));
     displacements[i] = static_cast<int>(offset);
     offset += sendcounts[i];
   }
 
-  std::vector<int> local_data(sendcounts[world_rank]);
+  std::vector<int> local_data(sendcounts[world_rank]);  // NOLINT
 
   MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
                local_data.data(), sendcounts[world_rank], MPI_INT, 0, MPI_COMM_WORLD);
@@ -71,17 +72,17 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
     }
   }
 
-  int global_min;
+  int global_min = 0;
   MPI_Allreduce(&local_min, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
   GetOutput() = global_min;
 
   return true;
 }
 
-bool ShkrylevaSVecMinValMPI::PostProcessingImpl() {
-  int finalized;
+bool ShkrylevaSVecMinValMPI::PostProcessingImpl() {  // NOLINT
+  int finalized = 0;
   MPI_Finalized(&finalized);
-  if (!finalized) {
+  if (finalized == 0) {
     // MPI_Finalize();
   }
   return GetOutput() > INT_MIN;

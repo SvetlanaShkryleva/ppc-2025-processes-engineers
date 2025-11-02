@@ -19,7 +19,7 @@ namespace shkryleva_s_vec_min_val {
 
 class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
-  static std::string PrintTestParam(const TestType &test_param) {
+  static auto PrintTestParam(const TestType &test_param) -> std::string {
     return std::to_string(std::get<0>(test_param)) + "_" + std::get<1>(test_param);
   }
 
@@ -56,28 +56,32 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
     }
   }
 
-  bool CheckTestOutputData(OutType &output_data) final {
+  auto CheckTestOutputData(OutType &output_data) -> bool final const {  // NOLINT
     return (expected_output_ == output_data);
   }
 
-  InType GetTestInputData() final {
+  auto GetTestInputData() -> InType final {
     return input_data_;
   }
 
  private:
-  InType input_data_;
-  OutType expected_output_;
+  InType input_data_{};
+  OutType expected_output_{};
 };
 
 namespace {
 
-TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {
+TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {  // NOLINT
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 5> kTestParam = {std::make_tuple(0, "small_vector"), std::make_tuple(1, "negative_vector"),
-                                            std::make_tuple(2, "single_element"), std::make_tuple(3, "all_equal"),
-                                            std::make_tuple(4, "large_values")};
+const std::array<TestType, 5> kTestParam = {
+    std::make_tuple(0, "small_vector"), 
+    std::make_tuple(1, "negative_vector"),
+    std::make_tuple(2, "single_element"), 
+    std::make_tuple(3, "all_equal"),
+    std::make_tuple(4, "large_values")
+};
 
 const auto kTestTasksList = std::tuple_cat(
     ppc::util::AddFuncTask<ShkrylevaSVecMinValMPI, InType>(kTestParam, PPC_SETTINGS_shkryleva_s_vec_min_val),
@@ -87,7 +91,12 @@ const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 
 const auto kPerfTestName = ShkrylevaRunFuncTestsProcesses::PrintFuncTestName<ShkrylevaRunFuncTestsProcesses>;
 
-INSTANTIATE_TEST_SUITE_P(VectorMinTests, ShkrylevaRunFuncTestsProcesses, kGtestValues, kPerfTestName);
+INSTANTIATE_TEST_SUITE_P(  // NOLINT
+    VectorMinTests, 
+    ShkrylevaRunFuncTestsProcesses, 
+    kGtestValues, 
+    kPerfTestName
+);
 
 }  // namespace
 
