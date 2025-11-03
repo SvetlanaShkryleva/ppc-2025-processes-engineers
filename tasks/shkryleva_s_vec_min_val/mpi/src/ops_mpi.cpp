@@ -82,9 +82,8 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   int global_min = INT_MAX;
   MPI_Allreduce(&local_min, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-  if (world_rank == 0) {
-    GetOutput() = global_min;
-  }
+  GetOutput() = global_min;
+
   return true;
 }
 
