@@ -67,25 +67,24 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
     offset += sendcounts[i];
   }
 
-  if (sendcounts[world_rank] == 0) {
-    GetOutput() = INT_MAX;
-    return true;
-  }
-
-  std::vector<int> local_data(sendcounts[world_rank]);  // NOLINT
+  std::vector<int> local_data(std::max(sendcounts[world_rank], 0));  // NOLINT
 
   MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
                local_data.data(), sendcounts[world_rank], MPI_INT, 0, MPI_COMM_WORLD);
 
   int local_min = INT_MAX;
-  for (int value : local_data) {
-    local_min = (value < local_min) ? value : local_min;
+  if (sendcounts[world_rank] > 0) {
+    for (int value : local_data) {
+      local_min = (value < local_min) ? value : local_min;
+    }
   }
 
   int global_min = INT_MAX;
   MPI_Allreduce(&local_min, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-  GetOutput() = global_min;
+  if (world_rank == 0) {
+    GetOutput() = global_min;
+  }
   return true;
 }
 
