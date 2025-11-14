@@ -54,15 +54,15 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
     return false;
   }
 
-  int base_local_size = total_size / world_size;
-  int remainder = total_size % world_size;
+  int base_size = total_size / world_size;
+  int extra_items = total_size % world_size;
 
   std::vector<int> sendcounts(world_size);     // NOLINT
   std::vector<int> displacements(world_size);  // NOLINT
 
   int offset = 0;
   for (int i = 0; i < world_size; ++i) {
-    sendcounts[i] = base_local_size + (i < remainder ? 1 : 0);
+    sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
     displacements[i] = offset;
     offset += sendcounts[i];
   }
@@ -79,10 +79,10 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
     }
   }
 
-  int global_min = INT_MAX;
-  MPI_Allreduce(&local_min, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  int total_min = INT_MAX;
+  MPI_Allreduce(&local_min, &total_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-  GetOutput() = global_min;
+  GetOutput() = total_min;
 
   return true;
 }

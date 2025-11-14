@@ -26,28 +26,28 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
 
     switch (test_case) {
       case 0:
-        input_data_ = {5, 3, 8, 1, 9};
+        input_data_ = {1};
         expected_output_ = 1;
         break;
       case 1:
-        input_data_ = {-2, 0, 5, -8, 3};
-        expected_output_ = -8;
+        input_data_ = {11, 11, 11, 11, 11, 11};
+        expected_output_ = 11;
         break;
       case 2:
-        input_data_ = {42};
-        expected_output_ = 42;
+        input_data_ = {-981, 981};
+        expected_output_ = -981;
         break;
       case 3:
-        input_data_ = {7, 7, 7, 7, 7};
-        expected_output_ = 7;
+        input_data_ = {-12, -67, -953, -82};
+        expected_output_ = -953;
         break;
       case 4:
-        input_data_ = {1000, -1000, 500, -500, 0};
-        expected_output_ = -1000;
+        input_data_ = {10000, -20000, 600000, -600000, 5050000};
+        expected_output_ = -600000;
         break;
       default:
-        input_data_ = {1, 2, 3};
-        expected_output_ = 1;
+        input_data_ = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+        expected_output_ = 0;
         break;
     }
   }
@@ -71,8 +71,8 @@ TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {  // NOLINT
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 5> kTestParam = {std::make_tuple(0, "small_vector"), std::make_tuple(1, "negative_vector"),
-                                            std::make_tuple(2, "single_element"), std::make_tuple(3, "all_equal"),
+const std::array<TestType, 5> kTestParam = {std::make_tuple(0, "single_element"), std::make_tuple(1, "all_equal"),
+                                            std::make_tuple(2, "small_vector"), std::make_tuple(3, "negative_vector"),
                                             std::make_tuple(4, "large_values")};
 
 const auto kTestTasksList = std::tuple_cat(

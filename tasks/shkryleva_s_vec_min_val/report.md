@@ -11,17 +11,22 @@
 
 ## 3. Последовательный алгоритм
 ```cpp
-int min_val = *std::min_element(GetInput().begin(), GetInput().end());
+  int min_val = GetInput()[0];
+  for (size_t i = 1; i < GetInput().size(); i++) {
+    if (GetInput()[i] < min_val) {
+      min_val = GetInput()[i];
+    }
+  }
 ```
-Алгоритм использует стандартную библиотечную функцию std::min_element для поиска минимального элемента, что обеспечивает временную сложность O(n).
+Алгоритм использует простой итеративный подход с циклом для поиска минимального элемента, что обеспечивает временную сложность O(n).
 
 ## 4. Схема распараллеливания
 ### Распределение данных
 - Блочное распределение: Исходный вектор делится на приблизительно равные блоки между процессами
-- Обработка остатка: При неравномерном делении первые remainder процессов получают на один элемент больше
+- Обработка остатка: При неравномерном делении первые процессы получают на один элемент больше
 - Динамическое вычисление размеров:
-  base_local_size = total_size / world_size - базовый размер блока
-  remainder = total_size % world_size - остаток для распределения
+  base_size = total_size / world_size - базовый размер блока
+  extra_items = total_size % world_size - остаток для распределения
 ### Коммуникационная схема
 1. Broadcast размера данных (MPI_Bcast):
   Процесс 0 рассылает общий размер вектора всем процессам
@@ -66,11 +71,11 @@ PostProcessingImpl()
 
 Использование MPI_Scatterv для распределения данных с балансировкой остатка (первые процессы получают +1 элемент)
 ```cpp
-int base_local_size = total_size / world_size;
-int remainder = total_size % world_size;
+int base_size = total_size / world_size;
+int extra_items = total_size % world_size;
 
 for (int i = 0; i < world_size; ++i) {
-    sendcounts[i] = base_local_size + (i < remainder ? 1 : 0);
+    sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
 }
 ```
 
@@ -118,32 +123,22 @@ for (int i = 0; i < world_size; ++i) {
 ### Результаты времени выполнения (секунды):
 | Процессы | Время (с) | Ускорение | Эффективность |
 |----------|-----------|-----------|---------------|
-| 1 (seq)  | 0.0271285 | 1.00      | 100%          |
-| 2        | 0.203753  | 0.13      | 6.5%          |
-| 4        | 0.151665  | 0.18      | 4.5%          |
-| 8        | 0.158276  | 0.17      | 2.1%          |
+| 1 (seq)  | 0.082347  | 1.00      | 100%          |
+| 2        | 0.203896  | 0.40      | 20%           |
+| 4        | 0.184119  | 0.45      | 11%           |
+| 8        | 0.154157  | 0.53      | 7%            |
 
 ### Анализ производительности:
-- Замедление MPI: параллельная версия в 5.6-7.6 раз медленнее sequential эталона
-- Стабильность MPI: Наблюдается улучшение от 2 к 4 процессам (~34% ускорение). При переходе к 8 процессам производительность стабилизируется
+- Замедление MPI: параллельная версия в 2-2.5 раз медленнее sequential эталона
+- Стабильность MPI: Наблюдается постепенное улучшение производительности от 2 к 8 процессам (ускорение от 0.40 до 0.53)
 - Накладные расходы: время на коммуникации составляет значительную часть общего времени выполнения
 
 ## 8. Выводы
 - Функциональная корректность: все 10 тестов успешно пройдены, алгоритмы работают правильно
-- Ограничения параллелизации: для задачи размером 100,000,000 элементов накладные расходы MPI делают параллелизацию неэффективной
-- Относительная эффективность: наилучший результат достигнут при 4 процессах в режиме pipeline
+- Ограничения параллелизации: для задачи поиска минимума в векторе накладные расходы MPI делают параллелизацию неэффективной
+- Относительная эффективность: наилучший результат достигнут при 8 процессах с ускорением 0.53
 - Область применения MPI: может стать эффективной при значительном увеличении объема данных или усложнении вычислений
 - Масштабируемость: алгоритм демонстрирует стабильную работу с различным количеством процессов
-
-В ходе работы успешно разработаны и реализованы последовательный и параллельный алгоритмы поиска 
-минимального значения в векторе. Функциональное тестирование подтвердило корректность работы 
-обоих алгоритмов для различных тестовых случаев.
-
-Анализ производительности показал, что для текущего размера задачи (100,000,000 элементов) 
-параллельная MPI реализация не обеспечивает ускорения относительно sequential подхода. 
-Накладные расходы на инициализацию MPI и межпроцессные коммуникации превышают вычислительную 
-выгоду от распараллеливания. Наилучший результат MPI достигнут при 4 процессах в режиме pipeline, 
-где время выполнения составило 0.151665 с. против эталонного sequential времени 0.027252 с.
 
 Несмотря на отсутствие абсолютного ускорения, работа демонстрирует корректную реализацию 
 параллельного алгоритма и понимание принципов распределенных вычислений. Для демонстрации 
@@ -157,7 +152,7 @@ OpenMPI docs: https://www.open-mpi.org/docs/
 
 ## Приложение
 ```cpp
-bool ShkrylevaSVecMinValMPI::RunImpl() {
+bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   if (GetInput().empty()) {
     return false;
   }
@@ -168,7 +163,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
   int total_size = 0;
-  const std::vector<int> *input_data_ptr = nullptr;
+  const std::vector<int> *input_data_ptr = nullptr;  // NOLINT
 
   if (world_rank == 0) {
     input_data_ptr = &GetInput();
@@ -181,20 +176,20 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
     return false;
   }
 
-  int base_local_size = total_size / world_size;
-  int remainder = total_size % world_size;
+  int base_size = total_size / world_size;
+  int extra_items = total_size % world_size;
 
-  std::vector<int> sendcounts(world_size);
-  std::vector<int> displacements(world_size);
+  std::vector<int> sendcounts(world_size);     // NOLINT
+  std::vector<int> displacements(world_size);  // NOLINT
 
   int offset = 0;
   for (int i = 0; i < world_size; ++i) {
-    sendcounts[i] = base_local_size + (i < remainder ? 1 : 0);
+    sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
     displacements[i] = offset;
     offset += sendcounts[i];
   }
 
-  std::vector<int> local_data(std::max(sendcounts[world_rank], 0));
+  std::vector<int> local_data(std::max(sendcounts[world_rank], 0));  // NOLINT
 
   MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
                local_data.data(), sendcounts[world_rank], MPI_INT, 0, MPI_COMM_WORLD);
@@ -206,20 +201,11 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
     }
   }
 
-  int global_min = INT_MAX;
-  MPI_Allreduce(&local_min, &global_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  int total_min = INT_MAX;
+  MPI_Allreduce(&local_min, &total_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-  GetOutput() = global_min;
+  GetOutput() = total_min;
 
   return true;
-}
-
-bool ShkrylevaSVecMinValMPI::PostProcessingImpl() {
-  int finalized = 0;
-  MPI_Finalized(&finalized);
-  if (finalized == 0) {
-    // MPI_Finalize();
-  }
-  return GetOutput() > INT_MIN;
 }
 ```

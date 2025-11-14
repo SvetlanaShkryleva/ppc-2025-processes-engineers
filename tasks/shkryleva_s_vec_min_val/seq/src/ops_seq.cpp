@@ -27,7 +27,14 @@ bool ShkrylevaSVecMinValSEQ::RunImpl() {  // NOLINT
   if (GetInput().empty()) {
     return false;
   }
-  int min_val = *std::min_element(GetInput().begin(), GetInput().end());
+
+  int min_val = GetInput()[0];
+  for (size_t i = 1; i < GetInput().size(); i++) {
+    if (GetInput()[i] < min_val) {
+      min_val = GetInput()[i];
+    }
+  }
+
   GetOutput() = min_val;
   return true;
 }
