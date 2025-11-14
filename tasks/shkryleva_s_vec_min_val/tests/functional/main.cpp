@@ -45,6 +45,10 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
         input_data_ = {10000, -20000, 600000, -600000, 5050000};
         expected_output_ = -600000;
         break;
+      case 5:
+        input_data_ = {};
+        expected_output_ = INT_MAX;
+        break;
       default:
         input_data_ = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
         expected_output_ = 0;
@@ -71,9 +75,9 @@ TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {  // NOLINT
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 5> kTestParam = {std::make_tuple(0, "single_element"), std::make_tuple(1, "all_equal"),
-                                            std::make_tuple(2, "small_vector"), std::make_tuple(3, "negative_vector"),
-                                            std::make_tuple(4, "large_values")};
+const std::array<TestType, 6> kTestParam = {std::make_tuple(0, "single_element"), std::make_tuple(1, "all_equal"),
+                                            std::make_tuple(2, "small_vector"),   std::make_tuple(3, "negative_vector"),
+                                            std::make_tuple(4, "large_values"),   std::make_tuple(5, "empty_vector")};
 
 const auto kTestTasksList = std::tuple_cat(
     ppc::util::AddFuncTask<ShkrylevaSVecMinValMPI, InType>(kTestParam, PPC_SETTINGS_shkryleva_s_vec_min_val),

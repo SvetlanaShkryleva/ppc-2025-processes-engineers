@@ -15,7 +15,7 @@ ShkrylevaSVecMinValSEQ::ShkrylevaSVecMinValSEQ(const InType &in) {
 }
 
 bool ShkrylevaSVecMinValSEQ::ValidationImpl() {  // NOLINT
-  return (!GetInput().empty()) && (GetOutput() == 0);
+  return (GetOutput() == 0);
 }
 
 bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {  // NOLINT
@@ -25,7 +25,7 @@ bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {  // NOLINT
 
 bool ShkrylevaSVecMinValSEQ::RunImpl() {  // NOLINT
   if (GetInput().empty()) {
-    return false;
+    return true;
   }
 
   int min_val = GetInput()[0];

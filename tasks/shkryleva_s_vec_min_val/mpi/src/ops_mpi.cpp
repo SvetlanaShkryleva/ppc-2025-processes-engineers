@@ -16,23 +16,17 @@ ShkrylevaSVecMinValMPI::ShkrylevaSVecMinValMPI(const InType &in) {
 }
 
 bool ShkrylevaSVecMinValMPI::ValidationImpl() {  // NOLINT
-  return (!GetInput().empty()) && (GetOutput() == 0);
+  return (GetOutput() == 0);
 }
 
 bool ShkrylevaSVecMinValMPI::PreProcessingImpl() {  // NOLINT
-  int initialized = 0;
-  MPI_Initialized(&initialized);
-  if (initialized == 0) {
-    MPI_Init(nullptr, nullptr);
-  }
-
   GetOutput() = INT_MAX;
   return true;
 }
 
 bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   if (GetInput().empty()) {
-    return false;
+    return true;
   }
 
   int world_rank = 0;
@@ -51,7 +45,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   MPI_Bcast(&total_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (total_size == 0) {
-    return false;
+    return true;
   }
 
   int base_size = total_size / world_size;
