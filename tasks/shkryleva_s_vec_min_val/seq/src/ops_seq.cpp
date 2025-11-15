@@ -30,7 +30,7 @@ bool ShkrylevaSVecMinValSEQ::RunImpl() {  // NOLINT
 
   int min_val = GetInput()[0];
   for (size_t i = 1; i < GetInput().size(); i++) {
-    if (GetInput()[i] < min_val) {
+    if (GetInput()[i] < min_val) {  // NOLINT
       min_val = GetInput()[i];
     }
   }
