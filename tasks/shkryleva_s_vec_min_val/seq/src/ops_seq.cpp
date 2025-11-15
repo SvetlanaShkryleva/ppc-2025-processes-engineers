@@ -1,7 +1,7 @@
 #include "shkryleva_s_vec_min_val/seq/include/ops_seq.hpp"
 
-#include <algorithm>
 #include <climits>
+#include <cstddef>
 #include <vector>
 
 #include "shkryleva_s_vec_min_val/common/include/common.hpp"
