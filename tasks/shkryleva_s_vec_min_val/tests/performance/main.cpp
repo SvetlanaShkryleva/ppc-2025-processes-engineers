@@ -29,7 +29,7 @@ class ShkrylevaSVecMinValPerfTests : public ppc::util::BaseRunPerfTests<InType, 
     input_data_[kVectorSize / 2] = expected_min_;
   }
 
-  auto CheckTestOutputData(OutType &output_data) -> bool final {  // NOLINT
+  auto CheckTestOutputData(OutType &output_data) -> bool final {
     return expected_min_ == output_data;
   }
 
@@ -42,7 +42,7 @@ class ShkrylevaSVecMinValPerfTests : public ppc::util::BaseRunPerfTests<InType, 
   OutType expected_min_{};
 };
 
-TEST_P(ShkrylevaSVecMinValPerfTests, RunPerfModes) {  // NOLINT
+TEST_P(ShkrylevaSVecMinValPerfTests, RunPerfModes) {
   ExecuteTest(GetParam());
 }
 
@@ -53,7 +53,6 @@ const auto kGtestValues = ppc::util::TupleToGTestValues(kAllPerfTasks);
 
 const auto kPerfTestName = ShkrylevaSVecMinValPerfTests::CustomPerfTestName;
 
-INSTANTIATE_TEST_SUITE_P(  // NOLINT
-    RunModeTests, ShkrylevaSVecMinValPerfTests, kGtestValues, kPerfTestName);
+INSTANTIATE_TEST_SUITE_P(RunModeTests, ShkrylevaSVecMinValPerfTests, kGtestValues, kPerfTestName);
 
 }  // namespace shkryleva_s_vec_min_val

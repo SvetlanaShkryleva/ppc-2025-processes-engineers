@@ -14,23 +14,23 @@ ShkrylevaSVecMinValSEQ::ShkrylevaSVecMinValSEQ(const InType &in) {
   GetOutput() = 0;
 }
 
-bool ShkrylevaSVecMinValSEQ::ValidationImpl() {  // NOLINT
+bool ShkrylevaSVecMinValSEQ::ValidationImpl() {
   return (GetOutput() == 0);
 }
 
-bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {  // NOLINT
+bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {
   GetOutput() = INT_MAX;
   return true;
 }
 
-bool ShkrylevaSVecMinValSEQ::RunImpl() {  // NOLINT
+bool ShkrylevaSVecMinValSEQ::RunImpl() {
   if (GetInput().empty()) {
     return true;
   }
 
   int min_val = GetInput()[0];
   for (size_t i = 1; i < GetInput().size(); i++) {
-    if (GetInput()[i] < min_val) {  // NOLINT
+    if (GetInput()[i] < min_val) {
       min_val = GetInput()[i];
     }
   }
@@ -39,7 +39,7 @@ bool ShkrylevaSVecMinValSEQ::RunImpl() {  // NOLINT
   return true;
 }
 
-bool ShkrylevaSVecMinValSEQ::PostProcessingImpl() {  // NOLINT
+bool ShkrylevaSVecMinValSEQ::PostProcessingImpl() {
   return GetOutput() > INT_MIN;
 }
 

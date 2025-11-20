@@ -15,16 +15,16 @@ ShkrylevaSVecMinValMPI::ShkrylevaSVecMinValMPI(const InType &in) {
   GetOutput() = 0;
 }
 
-bool ShkrylevaSVecMinValMPI::ValidationImpl() {  // NOLINT
+bool ShkrylevaSVecMinValMPI::ValidationImpl() {
   return (GetOutput() == 0);
 }
 
-bool ShkrylevaSVecMinValMPI::PreProcessingImpl() {  // NOLINT
+bool ShkrylevaSVecMinValMPI::PreProcessingImpl() {
   GetOutput() = INT_MAX;
   return true;
 }
 
-bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
+bool ShkrylevaSVecMinValMPI::RunImpl() {
   if (GetInput().empty()) {
     return true;
   }
@@ -35,7 +35,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
   int total_size = 0;
-  const std::vector<int> *input_data_ptr = nullptr;  // NOLINT
+  const std::vector<int> *input_data_ptr = nullptr;
 
   if (world_rank == 0) {
     input_data_ptr = &GetInput();
@@ -51,8 +51,8 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   int base_size = total_size / world_size;
   int extra_items = total_size % world_size;
 
-  std::vector<int> sendcounts(world_size);     // NOLINT
-  std::vector<int> displacements(world_size);  // NOLINT
+  std::vector<int> sendcounts(world_size);
+  std::vector<int> displacements(world_size);
 
   int offset = 0;
   for (int i = 0; i < world_size; ++i) {
@@ -61,7 +61,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
     offset += sendcounts[i];
   }
 
-  std::vector<int> local_data(std::max(sendcounts[world_rank], 0));  // NOLINT
+  std::vector<int> local_data(std::max(sendcounts[world_rank], 0));
 
   MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
                local_data.data(), sendcounts[world_rank], MPI_INT, 0, MPI_COMM_WORLD);
@@ -81,7 +81,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {  // NOLINT
   return true;
 }
 
-bool ShkrylevaSVecMinValMPI::PostProcessingImpl() {  // NOLINT
+bool ShkrylevaSVecMinValMPI::PostProcessingImpl() {
   int finalized = 0;
   MPI_Finalized(&finalized);
   if (finalized == 0) {

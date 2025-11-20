@@ -57,7 +57,7 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
     }
   }
 
-  auto CheckTestOutputData(OutType &output_data) -> bool final {  // NOLINT
+  auto CheckTestOutputData(OutType &output_data) -> bool final {
     return (expected_output_ == output_data);
   }
 
@@ -72,7 +72,7 @@ class ShkrylevaRunFuncTestsProcesses : public ppc::util::BaseRunFuncTests<InType
 
 namespace {
 
-TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {  // NOLINT
+TEST_P(ShkrylevaRunFuncTestsProcesses, FindMinValue) {
   ExecuteTest(GetParam());
 }
 
@@ -88,8 +88,7 @@ const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 
 const auto kPerfTestName = ShkrylevaRunFuncTestsProcesses::PrintFuncTestName<ShkrylevaRunFuncTestsProcesses>;
 
-INSTANTIATE_TEST_SUITE_P(  // NOLINT
-    VectorMinTests, ShkrylevaRunFuncTestsProcesses, kGtestValues, kPerfTestName);
+INSTANTIATE_TEST_SUITE_P(VectorMinTests, ShkrylevaRunFuncTestsProcesses, kGtestValues, kPerfTestName);
 
 }  // namespace
 
