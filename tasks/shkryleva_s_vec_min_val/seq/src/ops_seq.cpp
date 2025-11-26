@@ -15,7 +15,7 @@ ShkrylevaSVecMinValSEQ::ShkrylevaSVecMinValSEQ(const InType &in) {
 }
 
 bool ShkrylevaSVecMinValSEQ::ValidationImpl() {
-  return (GetOutput() == 0);
+  return !GetInput().empty();
 }
 
 bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {
@@ -24,10 +24,6 @@ bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {
 }
 
 bool ShkrylevaSVecMinValSEQ::RunImpl() {
-  if (GetInput().empty()) {
-    return true;
-  }
-
   int min_val = GetInput()[0];
   for (size_t i = 1; i < GetInput().size(); i++) {
     if (GetInput()[i] < min_val) {  // NOLINT
@@ -40,7 +36,7 @@ bool ShkrylevaSVecMinValSEQ::RunImpl() {
 }
 
 bool ShkrylevaSVecMinValSEQ::PostProcessingImpl() {
-  return GetOutput() > INT_MIN;
+  return true;
 }
 
 }  // namespace shkryleva_s_vec_min_val

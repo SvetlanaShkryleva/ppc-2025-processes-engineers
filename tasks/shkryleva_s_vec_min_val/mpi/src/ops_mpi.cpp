@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 #include "shkryleva_s_vec_min_val/common/include/common.hpp"
@@ -25,6 +26,11 @@ bool ShkrylevaSVecMinValMPI::ValidationImpl() {
 
   if (world_rank == 0) {
     is_valid = !GetInput().empty();
+
+    if (is_valid) {
+      uint64_t size = static_cast<uint64_t>(GetInput().size());
+      is_valid = (size <= static_cast<uint64_t>(std::numeric_limits<int>::max()));
+    }
   }
 
   int validation_result = is_valid ? 1 : 0;
@@ -44,50 +50,55 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-  uint64_t total_size = 0;
+  uint64_t total_size_uint64 = 0;
   const std::vector<int> *input_data_ptr = nullptr;
 
   if (world_rank == 0) {
     input_data_ptr = &GetInput();
-    total_size = static_cast<uint64_t>(input_data_ptr->size());
+    total_size_uint64 = static_cast<uint64_t>(input_data_ptr->size());
   }
 
-  MPI_Bcast(&total_size, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&total_size_uint64, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+
+  const int total_size = static_cast<int>(total_size_uint64);
 
   if (total_size == 0) {
+    int local_min = INT_MAX;
+    int total_min = INT_MAX;
+    MPI_Allreduce(&local_min, &total_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+    GetOutput() = total_min;
     return true;
   }
 
-  uint64_t base_size = total_size / world_size;
-  uint64_t extra_items = total_size % world_size;
+  const int base_size = total_size / world_size;
+  const int extra_items = total_size % world_size;
 
-  std::vector<uint64_t> sendcounts(world_size);
-  std::vector<uint64_t> displacements(world_size);
+  std::vector<int> sendcounts(world_size);
+  std::vector<int> displacements(world_size);
 
-  uint64_t offset = 0;
+  int offset = 0;
   for (int i = 0; i < world_size; ++i) {
     sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
     displacements[i] = offset;
     offset += sendcounts[i];
   }
 
-  std::vector<int> sendcounts_int(world_size);
-  std::vector<int> displacements_int(world_size);
+  const int local_count = sendcounts[world_rank];
+  std::vector<int> local_data;
 
-  for (int i = 0; i < world_size; ++i) {
-    sendcounts_int[i] = static_cast<int>(sendcounts[i]);
-    displacements_int[i] = static_cast<int>(displacements[i]);
+  if (local_count > 0) {
+    local_data.resize(local_count);
   }
 
-  std::vector<int> local_data(std::max(sendcounts_int[world_rank], 0));
-
-  MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts_int.data(), displacements_int.data(),
-               MPI_INT, local_data.data(), sendcounts_int[world_rank], MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
+               local_data.empty() ? nullptr : local_data.data(), local_count, MPI_INT, 0, MPI_COMM_WORLD);
 
   int local_min = INT_MAX;
-  if (sendcounts_int[world_rank] > 0) {
+  if (!local_data.empty()) {
     for (int value : local_data) {
-      local_min = (value < local_min) ? value : local_min;
+      if (value < local_min) {
+        local_min = value;
+      }
     }
   }
 
@@ -99,7 +110,7 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
 }
 
 bool ShkrylevaSVecMinValMPI::PostProcessingImpl() {
-  return GetOutput() > INT_MIN;
+  return true;
 }
 
 }  // namespace shkryleva_s_vec_min_val
