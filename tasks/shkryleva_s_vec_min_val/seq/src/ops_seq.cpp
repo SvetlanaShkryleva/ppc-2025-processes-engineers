@@ -15,7 +15,7 @@ ShkrylevaSVecMinValSEQ::ShkrylevaSVecMinValSEQ(const InType &in) {
 }
 
 bool ShkrylevaSVecMinValSEQ::ValidationImpl() {
-  return true;
+  return !GetInput().empty();
 }
 
 bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {
