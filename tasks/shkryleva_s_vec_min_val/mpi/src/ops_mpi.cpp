@@ -25,9 +25,7 @@ bool ShkrylevaSVecMinValMPI::ValidationImpl() {
   bool is_valid = true;
 
   if (world_rank == 0) {
-    is_valid = !GetInput().empty();
-
-    if (is_valid) {
+    if (!GetInput().empty()) {
       uint64_t size = static_cast<uint64_t>(GetInput().size());
       is_valid = (size <= static_cast<uint64_t>(std::numeric_limits<int>::max()));
     }
@@ -61,45 +59,40 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
   MPI_Bcast(&total_size_uint64, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
 
   const int total_size = static_cast<int>(total_size_uint64);
-
-  if (total_size == 0) {
-    int local_min = INT_MAX;
-    int total_min = INT_MAX;
-    MPI_Allreduce(&local_min, &total_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-    GetOutput() = total_min;
-    return true;
-  }
-
-  const int base_size = total_size / world_size;
-  const int extra_items = total_size % world_size;
-
-  std::vector<int> sendcounts(world_size);
-  std::vector<int> displacements(world_size);
-
-  int offset = 0;
-  for (int i = 0; i < world_size; ++i) {
-    sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
-    displacements[i] = offset;
-    offset += sendcounts[i];
-  }
-
-  const int local_count = sendcounts[world_rank];
-  std::vector<int> local_data;
-
-  if (local_count > 0) {
-    local_data.resize(local_count);
-  }
-
-  MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
-               local_data.empty() ? nullptr : local_data.data(), local_count, MPI_INT, 0, MPI_COMM_WORLD);
-
   int local_min = INT_MAX;
-  if (!local_data.empty()) {
-    for (int value : local_data) {
-      if (value < local_min) {
-        local_min = value;
+
+  if (total_size > 0) {
+    const int base_size = total_size / world_size;
+    const int extra_items = total_size % world_size;
+
+    std::vector<int> sendcounts(world_size);
+    std::vector<int> displacements(world_size);
+
+    int offset = 0;
+    for (int i = 0; i < world_size; ++i) {
+      sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
+      displacements[i] = offset;
+      offset += sendcounts[i];
+    }
+
+    const int local_count = sendcounts[world_rank];
+    std::vector<int> local_data;
+
+    if (local_count > 0) {
+      local_data.resize(local_count);
+    }
+
+    MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
+                 local_data.empty() ? nullptr : local_data.data(), local_count, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (!local_data.empty()) {
+      for (int value : local_data) {
+        local_min = std::min(value, local_min);
       }
     }
+  } else {
+    // Для пустого вектора - специальная обработка
+    // Все процессы имеют local_min = INT_MAX
   }
 
   int total_min = INT_MAX;
