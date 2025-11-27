@@ -90,9 +90,6 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
         local_min = std::min(value, local_min);
       }
     }
-  } else {
-    // Для пустого вектора - специальная обработка
-    // Все процессы имеют local_min = INT_MAX
   }
 
   int total_min = INT_MAX;
