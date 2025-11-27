@@ -26,7 +26,7 @@ bool ShkrylevaSVecMinValMPI::ValidationImpl() {
 
   if (world_rank == 0) {
     if (!GetInput().empty()) {
-      uint64_t size = static_cast<uint64_t>(GetInput().size());
+      auto size = static_cast<uint64_t>(GetInput().size());
       is_valid = (size <= static_cast<uint64_t>(std::numeric_limits<int>::max()));
     }
   }
