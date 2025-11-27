@@ -15,7 +15,7 @@ ShkrylevaSVecMinValSEQ::ShkrylevaSVecMinValSEQ(const InType &in) {
 }
 
 bool ShkrylevaSVecMinValSEQ::ValidationImpl() {
-  return !GetInput().empty();
+  return true;
 }
 
 bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {
@@ -24,7 +24,13 @@ bool ShkrylevaSVecMinValSEQ::PreProcessingImpl() {
 }
 
 bool ShkrylevaSVecMinValSEQ::RunImpl() {
-  int min_val = INT_MAX;
+  if (GetInput().empty()) {
+    // Для пустого вектора возвращаем INT_MAX (как в MPI версии)
+    GetOutput() = INT_MAX;
+    return true;
+  }
+
+  int min_val = GetInput()[0];
   for (size_t i = 1; i < GetInput().size(); i++) {
     if (GetInput()[i] < min_val) {  // NOLINT
       min_val = GetInput()[i];
