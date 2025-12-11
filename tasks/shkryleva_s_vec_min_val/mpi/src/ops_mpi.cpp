@@ -12,6 +12,70 @@
 
 namespace shkryleva_s_vec_min_val {
 
+namespace {
+
+struct DistributionInfo {
+  std::vector<int> sendcounts;
+  std::vector<int> displacements;
+  int local_count;
+};
+
+DistributionInfo CalculateDistribution(int total_size, int world_size) {
+  DistributionInfo info;
+  info.sendcounts.resize(world_size);
+  info.displacements.resize(world_size);
+
+  const int base_size = total_size / world_size;
+  const int extra_items = total_size % world_size;
+
+  int offset = 0;
+  for (int i = 0; i < world_size; ++i) {
+    info.sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
+    info.displacements[i] = offset;
+    offset += info.sendcounts[i];
+  }
+
+  return info;
+}
+
+void BroadcastVectorSize(uint64_t &total_size_uint64) {
+  MPI_Bcast(&total_size_uint64, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+}
+
+int ComputeLocalMinimum(const std::vector<int> &local_data) {
+  if (local_data.empty()) {
+    return INT_MAX;
+  }
+
+  int local_min = INT_MAX;
+  for (int value : local_data) {
+    local_min = std::min(value, local_min);
+  }
+  return local_min;
+}
+
+std::vector<int> ScatterVectorData(const std::vector<int> *input_data_ptr, const DistributionInfo &info,
+                                   int world_rank) {
+  std::vector<int> local_data;
+
+  if (info.local_count > 0) {
+    local_data.resize(info.local_count);
+
+    MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, info.sendcounts.data(),
+                 info.displacements.data(), MPI_INT, local_data.data(), info.local_count, MPI_INT, 0, MPI_COMM_WORLD);
+  }
+
+  return local_data;
+}
+
+int PerformGlobalReduction(int local_min) {
+  int total_min = INT_MAX;
+  MPI_Allreduce(&local_min, &total_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  return total_min;
+}
+
+}  // namespace
+
 ShkrylevaSVecMinValMPI::ShkrylevaSVecMinValMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
@@ -56,44 +120,21 @@ bool ShkrylevaSVecMinValMPI::RunImpl() {
     total_size_uint64 = static_cast<uint64_t>(input_data_ptr->size());
   }
 
-  MPI_Bcast(&total_size_uint64, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+  BroadcastVectorSize(total_size_uint64);
 
   const int total_size = static_cast<int>(total_size_uint64);
   int local_min = INT_MAX;
 
   if (total_size > 0) {
-    const int base_size = total_size / world_size;
-    const int extra_items = total_size % world_size;
+    DistributionInfo info = CalculateDistribution(total_size, world_size);
+    info.local_count = info.sendcounts[world_rank];
 
-    std::vector<int> sendcounts(world_size);
-    std::vector<int> displacements(world_size);
+    std::vector<int> local_data = ScatterVectorData(input_data_ptr, info, world_rank);
 
-    int offset = 0;
-    for (int i = 0; i < world_size; ++i) {
-      sendcounts[i] = base_size + (i < extra_items ? 1 : 0);
-      displacements[i] = offset;
-      offset += sendcounts[i];
-    }
-
-    const int local_count = sendcounts[world_rank];
-    std::vector<int> local_data;
-
-    if (local_count > 0) {
-      local_data.resize(local_count);
-    }
-
-    MPI_Scatterv((world_rank == 0) ? input_data_ptr->data() : nullptr, sendcounts.data(), displacements.data(), MPI_INT,
-                 local_data.empty() ? nullptr : local_data.data(), local_count, MPI_INT, 0, MPI_COMM_WORLD);
-
-    if (!local_data.empty()) {
-      for (int value : local_data) {
-        local_min = std::min(value, local_min);
-      }
-    }
+    local_min = ComputeLocalMinimum(local_data);
   }
 
-  int total_min = INT_MAX;
-  MPI_Allreduce(&local_min, &total_min, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  int total_min = PerformGlobalReduction(local_min);
 
   GetOutput() = total_min;
   return true;
