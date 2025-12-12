@@ -2,10 +2,9 @@
 
 #include <mpi.h>
 
+#include <algorithm>
 #include <cmath>
-#include <cstdlib>
-#include <ctime>
-#include <iostream>
+#include <random>
 #include <vector>
 
 #include "shkryleva_s_seidel_method/common/include/common.hpp"
@@ -42,44 +41,46 @@ bool ShkrylevaSSeidelMethodMPI::PreProcessingImpl() {
   }
 
   GetOutput() = 0;
-
-  if (rank == 0) {
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
-  }
-
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
 
-void ShkrylevaSSeidelMethodMPI::generate_random_matrix(int size, std::vector<std::vector<double>> &matrix,
-                                                       std::vector<double> &vector) const {
+void ShkrylevaSSeidelMethodMPI::GenerateRandomMatrix(size_t size, std::vector<std::vector<double>> &matrix,
+                                                     std::vector<double> &vector) {
   matrix.resize(size, std::vector<double>(size, 0.0));
   vector.resize(size, 0.0);
 
-  for (int i = 0; i < size; ++i) {
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  std::uniform_real_distribution<double> dis_off_diag(0.1, 1.0);
+  std::uniform_real_distribution<double> dis_diag_add(1.0, 5.0);
+  std::uniform_real_distribution<double> dis_vector(1.0, 20.0);
+
+  for (size_t i = 0; i < size; ++i) {
     double row_sum = 0.0;
-    for (int j = 0; j < size; ++j) {
+    for (size_t j = 0; j < size; ++j) {
       if (i != j) {
-        matrix[i][j] = static_cast<double>(std::rand() % 10 + 1) / 10.0;
+        matrix[i][j] = dis_off_diag(gen);
         row_sum += std::abs(matrix[i][j]);
       }
     }
-    matrix[i][i] = row_sum + static_cast<double>(std::rand() % 5 + 1);
-    vector[i] = static_cast<double>(std::rand() % 20 + 1);
+    matrix[i][i] = row_sum + dis_diag_add(gen);
+    vector[i] = dis_vector(gen);
   }
 }
 
-bool ShkrylevaSSeidelMethodMPI::converge(const std::vector<double> &x_new, const std::vector<std::vector<double>> &A,
-                                         const std::vector<double> &b, double epsilon) const {
-  int n = x_new.size();
+[[nodiscard]] bool ShkrylevaSSeidelMethodMPI::Converge(const std::vector<double> &x_new,
+                                                       const std::vector<std::vector<double>> &a,
+                                                       const std::vector<double> &b, double epsilon) {
   double residual_norm = 0.0;
+  size_t n = x_new.size();
 
-  for (int i = 0; i < n; ++i) {
-    double Ax_i = 0.0;
-    for (int j = 0; j < n; ++j) {
-      Ax_i += A[i][j] * x_new[j];
+  for (size_t i = 0; i < n; ++i) {
+    double ax_i = 0.0;
+    for (size_t j = 0; j < n; ++j) {
+      ax_i += a[i][j] * x_new[j];
     }
-    residual_norm += std::pow(Ax_i - b[i], 2);
+    residual_norm += std::pow(ax_i - b[i], 2);
   }
 
   return std::sqrt(residual_norm) < epsilon;
@@ -91,74 +92,125 @@ bool ShkrylevaSSeidelMethodMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int n = GetInput();
-  if (n <= 0) {
+  int n_input = GetInput();
+  if (n_input <= 0) {
     return false;
   }
+
+  size_t n = static_cast<size_t>(n_input);
 
   std::vector<int> row_counts(size, 0);
   std::vector<int> row_displs(size, 0);
 
-  int offset = 0;
-  for (int proc = 0; proc < size; ++proc) {
-    int base_rows = n / size;
-    int extra = (proc < (n % size)) ? 1 : 0;
-    row_counts[proc] = base_rows + extra;
-    row_displs[proc] = offset;
-    offset += row_counts[proc];
-  }
+  CalculateRowDistribution(n, size, row_counts, row_displs);
 
   int local_rows = row_counts[rank];
   int start_row = row_displs[rank];
 
-  std::vector<std::vector<double>> A_full;
-  std::vector<double> b_full;
-  std::vector<double> A_local(local_rows * n);
+  std::vector<double> a_local(local_rows * n);
   std::vector<double> b_local(local_rows);
-
-  if (rank == 0) {
-    generate_random_matrix(n, A_full, b_full);
-
-    for (int i = 0; i < n; ++i) {
-      if (A_full[i][i] == 0.0) {
-        MPI_Abort(MPI_COMM_WORLD, 1);
-        return false;
-      }
-    }
-
-    std::vector<int> send_counts(size, 0);
-    std::vector<int> send_displs(size, 0);
-
-    for (int proc = 0; proc < size; ++proc) {
-      send_counts[proc] = row_counts[proc] * n;
-      send_displs[proc] = row_displs[proc] * n;
-    }
-
-    std::vector<double> A_flat(n * n);
-    for (int i = 0; i < n; ++i) {
-      for (int j = 0; j < n; ++j) {
-        A_flat[i * n + j] = A_full[i][j];
-      }
-    }
-
-    MPI_Scatterv(A_flat.data(), send_counts.data(), send_displs.data(), MPI_DOUBLE, A_local.data(), local_rows * n,
-                 MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    MPI_Scatterv(b_full.data(), row_counts.data(), row_displs.data(), MPI_DOUBLE, b_local.data(), local_rows,
-                 MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  } else {
-    MPI_Scatterv(nullptr, nullptr, nullptr, MPI_DOUBLE, A_local.data(), local_rows * n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    MPI_Scatterv(nullptr, nullptr, nullptr, MPI_DOUBLE, b_local.data(), local_rows, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  }
-
   std::vector<double> x_local(local_rows, 0.0);
   std::vector<double> x_global(n, 0.0);
 
-  const double epsilon_val = 1e-6;
-  const int max_iterations = 1000;
+  bool has_error = false;
+  if (rank == 0) {
+    std::vector<std::vector<double>> a_full;
+    std::vector<double> b_full;
+    GenerateRandomMatrix(n, a_full, b_full);
+
+    has_error = CheckDiagonalElements(a_full);
+    ScatterData(a_full, b_full, a_local, b_local, row_counts, row_displs, size, n);
+  } else {
+    has_error = ReceiveScatteredData(a_local, b_local, local_rows, n);
+  }
+
+  if (CheckForErrors(has_error)) {
+    return false;
+  }
+
+  bool converged =
+      SolveIteratively(a_local, b_local, x_local, x_global, row_counts, row_displs, local_rows, start_row, n);
+
+  double global_sum = CalculateGlobalSum(x_local, rank);
+
+  int result = CalculateResult(global_sum, converged, rank, n);
+
+  BroadcastResult(result);
+  GetOutput() = result;
+
+  return true;
+}
+
+void ShkrylevaSSeidelMethodMPI::CalculateRowDistribution(size_t n, int size, std::vector<int> &row_counts,
+                                                         std::vector<int> &row_displs) {
+  int offset = 0;
+  for (int proc = 0; proc < size; ++proc) {
+    int base_rows = static_cast<int>(n) / size;
+    int extra = (proc < (static_cast<int>(n) % size)) ? 1 : 0;
+    row_counts[proc] = base_rows + extra;
+    row_displs[proc] = offset;
+    offset += row_counts[proc];
+  }
+}
+
+bool ShkrylevaSSeidelMethodMPI::CheckDiagonalElements(const std::vector<std::vector<double>> &a) {
+  for (const auto &row : a) {
+    size_t idx = &row - &a[0];
+    if (std::abs(row[idx]) < 1e-12) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void ShkrylevaSSeidelMethodMPI::ScatterData(const std::vector<std::vector<double>> &a_full,
+                                            const std::vector<double> &b_full, std::vector<double> &a_local,
+                                            std::vector<double> &b_local, const std::vector<int> &row_counts,
+                                            const std::vector<int> &row_displs, int size, size_t n) {
+  std::vector<int> send_counts(size, 0);
+  std::vector<int> send_displs(size, 0);
+
+  for (int proc = 0; proc < size; ++proc) {
+    send_counts[proc] = row_counts[proc] * static_cast<int>(n);
+    send_displs[proc] = row_displs[proc] * static_cast<int>(n);
+  }
+
+  std::vector<double> a_flat(n * n);
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < n; ++j) {
+      a_flat[i * n + j] = a_full[i][j];
+    }
+  }
+
+  MPI_Scatterv(a_flat.data(), send_counts.data(), send_displs.data(), MPI_DOUBLE, a_local.data(),
+               static_cast<int>(a_local.size()), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Scatterv(b_full.data(), row_counts.data(), row_displs.data(), MPI_DOUBLE, b_local.data(),
+               static_cast<int>(b_local.size()), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
+bool ShkrylevaSSeidelMethodMPI::ReceiveScatteredData(std::vector<double> &a_local, std::vector<double> &b_local,
+                                                     int local_rows, size_t n) {
+  MPI_Scatterv(nullptr, nullptr, nullptr, MPI_DOUBLE, a_local.data(), local_rows * static_cast<int>(n), MPI_DOUBLE, 0,
+               MPI_COMM_WORLD);
+  MPI_Scatterv(nullptr, nullptr, nullptr, MPI_DOUBLE, b_local.data(), local_rows, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  return false;
+}
+
+bool ShkrylevaSSeidelMethodMPI::CheckForErrors(bool has_error) {
+  int global_error = 0;
+  MPI_Allreduce(&has_error, &global_error, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+  return global_error != 0;
+}
+
+bool ShkrylevaSSeidelMethodMPI::SolveIteratively(const std::vector<double> &a_local, const std::vector<double> &b_local,
+                                                 std::vector<double> &x_local, std::vector<double> &x_global,
+                                                 const std::vector<int> &row_counts, const std::vector<int> &row_displs,
+                                                 int local_rows, int start_row, size_t n) {
+  const double kEpsilon = 1e-6;
+  const int kMaxIterations = 1000;
   int iteration = 0;
 
-  while (iteration < max_iterations) {
+  while (iteration < kMaxIterations) {
     MPI_Allgatherv(x_local.data(), local_rows, MPI_DOUBLE, x_global.data(), row_counts.data(), row_displs.data(),
                    MPI_DOUBLE, MPI_COMM_WORLD);
 
@@ -169,49 +221,45 @@ bool ShkrylevaSSeidelMethodMPI::RunImpl() {
 
       double sum = b_local[i];
 
-      for (int j = 0; j < global_i; ++j) {
-        sum -= A_local[i * n + j] * x_global[j];
+      for (size_t j = 0; j < static_cast<size_t>(global_i); ++j) {
+        sum -= a_local[i * static_cast<int>(n) + static_cast<int>(j)] * x_global[j];
       }
 
-      for (int j = global_i + 1; j < n; ++j) {
-        sum -= A_local[i * n + j] * x_global[j];
+      for (size_t j = static_cast<size_t>(global_i) + 1; j < n; ++j) {
+        sum -= a_local[i * static_cast<int>(n) + static_cast<int>(j)] * x_global[j];
       }
 
-      double new_val = sum / A_local[i * n + global_i];
+      double new_val = sum / a_local[i * static_cast<int>(n) + global_i];
       double diff = std::abs(new_val - x_local[i]);
-      if (diff > local_max_diff) {
-        local_max_diff = diff;
-      }
+      local_max_diff = std::max(diff, local_max_diff);
       x_local[i] = new_val;
     }
 
     double global_max_diff = 0.0;
     MPI_Allreduce(&local_max_diff, &global_max_diff, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-    if (global_max_diff < epsilon_val) {
-      break;
+    if (global_max_diff < kEpsilon) {
+      return true;
     }
 
     ++iteration;
   }
 
-  MPI_Allgatherv(x_local.data(), local_rows, MPI_DOUBLE, x_global.data(), row_counts.data(), row_displs.data(),
-                 MPI_DOUBLE, MPI_COMM_WORLD);
+  return false;
+}
 
-  bool converged = false;
-  if (rank == 0) {
-    converged = converge(x_global, A_full, b_full, epsilon_val);
-  }
-  MPI_Bcast(&converged, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
-
+double ShkrylevaSSeidelMethodMPI::CalculateGlobalSum(const std::vector<double> &x_local, int rank) {
   double local_sum = 0.0;
-  for (int i = 0; i < local_rows; ++i) {
-    local_sum += x_local[i];
+  for (double value : x_local) {
+    local_sum += value;
   }
 
   double global_sum = 0.0;
   MPI_Reduce(&local_sum, &global_sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  return global_sum;
+}
 
+int ShkrylevaSSeidelMethodMPI::CalculateResult(double global_sum, bool converged, int rank, size_t n) {
   int result = 0;
   if (rank == 0) {
     if (converged) {
@@ -224,11 +272,11 @@ bool ShkrylevaSSeidelMethodMPI::RunImpl() {
       result = -static_cast<int>(std::round(std::abs(global_sum)));
     }
   }
+  return result;
+}
 
+void ShkrylevaSSeidelMethodMPI::BroadcastResult(int &result) {
   MPI_Bcast(&result, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  GetOutput() = result;
-
-  return true;
 }
 
 bool ShkrylevaSSeidelMethodMPI::PostProcessingImpl() {

@@ -15,6 +15,8 @@ namespace shkryleva_s_seidel_method {
 
 class ShkrylevaRunFuncTestsSeidelMethod : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
+  ShkrylevaRunFuncTestsSeidelMethod() : input_data_(0), expected_output_(0) {}
+
   static auto PrintTestParam(const TestType &test_param) -> std::string {
     return std::to_string(std::get<0>(test_param)) + "_" + std::get<1>(test_param);
   }
@@ -26,7 +28,6 @@ class ShkrylevaRunFuncTestsSeidelMethod : public ppc::util::BaseRunFuncTests<InT
     test_name_ = std::get<1>(params);
 
     input_data_ = matrix_size;
-
     expected_output_ = 1;
   }
 

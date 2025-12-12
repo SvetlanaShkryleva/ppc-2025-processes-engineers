@@ -8,9 +8,10 @@
 namespace shkryleva_s_seidel_method {
 
 class ShkrylevaSRunPerfTestProcesses2 : public ppc::util::BaseRunPerfTests<InType, OutType> {
-  const int kCount_ = 1000;
-  InType input_data_{};
+ public:
+  ShkrylevaSRunPerfTestProcesses2() : input_data_(0) {}
 
+ protected:
   void SetUp() override {
     input_data_ = kCount_;
   }
@@ -22,6 +23,10 @@ class ShkrylevaSRunPerfTestProcesses2 : public ppc::util::BaseRunPerfTests<InTyp
   InType GetTestInputData() override {
     return input_data_;
   }
+
+ private:
+  const int kCount_ = 1000;
+  InType input_data_;
 };
 
 TEST_P(ShkrylevaSRunPerfTestProcesses2, RunPerfModes) {

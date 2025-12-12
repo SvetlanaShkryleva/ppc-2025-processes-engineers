@@ -20,9 +20,9 @@ class ShkrylevaSSeidelMethodMPI : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  void generate_random_matrix(int size, std::vector<std::vector<double>> &matrix, std::vector<double> &vector) const;
-  bool converge(const std::vector<double> &x_new, const std::vector<std::vector<double>> &A,
-                const std::vector<double> &b, double epsilon) const;
+  static void GenerateRandomMatrix(size_t size, std::vector<std::vector<double>> &matrix, std::vector<double> &vector);
+  [[nodiscard]] static bool Converge(const std::vector<double> &x_new, const std::vector<std::vector<double>> &a,
+                                     const std::vector<double> &b, double epsilon);
 };
 
 }  // namespace shkryleva_s_seidel_method
