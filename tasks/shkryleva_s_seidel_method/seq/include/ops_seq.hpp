@@ -20,9 +20,18 @@ class ShkrylevaSSeidelMethodSEQ : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  static void GenerateRandomMatrix(size_t size, std::vector<std::vector<double>> &matrix, std::vector<double> &vector);
-  [[nodiscard]] static bool Converge(const std::vector<double> &x_new, const std::vector<std::vector<double>> &a,
-                                     const std::vector<double> &b, double epsilon);
+  void GenerateRandomMatrix(int size, std::vector<std::vector<double>> &matrix, std::vector<double> &vector);
+  void ComputeRightHandSide(int n, const std::vector<std::vector<double>> &a, std::vector<double> &b);
+  double PerformSeidelIteration(int n, const std::vector<std::vector<double>> &a, const std::vector<double> &b,
+                                std::vector<double> &x);
+
+ private:
+  int n_;
+  std::vector<std::vector<double>> A_;
+  std::vector<double> b_;
+  std::vector<double> x_;
+  double epsilon_;
+  int max_iterations_;
 };
 
 }  // namespace shkryleva_s_seidel_method

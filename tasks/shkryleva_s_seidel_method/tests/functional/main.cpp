@@ -13,47 +13,43 @@
 
 namespace shkryleva_s_seidel_method {
 
-class ShkrylevaRunFuncTestsSeidelMethod : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
+class ShkrylevaSSeidelMethodFuncTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
-  ShkrylevaRunFuncTestsSeidelMethod() : input_data_(0), expected_output_(0) {}
-
-  static auto PrintTestParam(const TestType &test_param) -> std::string {
+  static std::string PrintTestParam(const TestType &test_param) {
     return std::to_string(std::get<0>(test_param)) + "_" + std::get<1>(test_param);
   }
 
  protected:
   void SetUp() override {
     TestType params = std::get<static_cast<std::size_t>(ppc::util::GTestParamIndex::kTestParams)>(GetParam());
-    int matrix_size = std::get<0>(params);
-    test_name_ = std::get<1>(params);
-
-    input_data_ = matrix_size;
-    expected_output_ = 1;
+    input_data_ = std::get<0>(params);
   }
 
-  auto CheckTestOutputData(OutType &output_data) -> bool final {
-    return (output_data > 0);
+  bool CheckTestOutputData(OutType &output_data) final {
+    return (input_data_ == output_data);
   }
 
-  auto GetTestInputData() -> InType final {
+  InType GetTestInputData() final {
     return input_data_;
   }
 
  private:
-  InType input_data_;
-  OutType expected_output_;
-  std::string test_name_;
+  InType input_data_ = 0;
 };
 
 namespace {
 
-TEST_P(ShkrylevaRunFuncTestsSeidelMethod, GaussSeidelConvergenceTest) {
+TEST_P(ShkrylevaSSeidelMethodFuncTests, GaussSeidelMethodTest) {
   ExecuteTest(GetParam());
 }
 
-const std::array<TestType, 6> kTestParam = {std::make_tuple(3, "small_matrix"),    std::make_tuple(5, "medium_matrix"),
-                                            std::make_tuple(10, "large_matrix"),   std::make_tuple(15, "xlarge_matrix"),
-                                            std::make_tuple(20, "xxlarge_matrix"), std::make_tuple(25, "huge_matrix")};
+const std::array<TestType, 10> kTestParam = {
+    std::make_tuple(1, "size_1_test"),   std::make_tuple(2, "size_2_test"),   std::make_tuple(3, "size_3_test"),
+    std::make_tuple(5, "size_5_test"),   std::make_tuple(10, "size_10_test"), std::make_tuple(15, "size_15_test"),
+    std::make_tuple(20, "size_20_test"), std::make_tuple(25, "size_25_test"), std::make_tuple(30, "size_30_test"),
+    std::make_tuple(35, "size_35_test")
+
+};
 
 const auto kTestTasksList = std::tuple_cat(
     ppc::util::AddFuncTask<ShkrylevaSSeidelMethodMPI, InType>(kTestParam, PPC_SETTINGS_shkryleva_s_seidel_method),
@@ -61,9 +57,9 @@ const auto kTestTasksList = std::tuple_cat(
 
 const auto kGtestValues = ppc::util::ExpandToValues(kTestTasksList);
 
-const auto kPerfTestName = ShkrylevaRunFuncTestsSeidelMethod::PrintFuncTestName<ShkrylevaRunFuncTestsSeidelMethod>;
+const auto kPerfTestName = ShkrylevaSSeidelMethodFuncTests::PrintFuncTestName<ShkrylevaSSeidelMethodFuncTests>;
 
-INSTANTIATE_TEST_SUITE_P(GaussSeidelTests, ShkrylevaRunFuncTestsSeidelMethod, kGtestValues, kPerfTestName);
+INSTANTIATE_TEST_SUITE_P(SeidelMethodTests, ShkrylevaSSeidelMethodFuncTests, kGtestValues, kPerfTestName);
 
 }  // namespace
 
