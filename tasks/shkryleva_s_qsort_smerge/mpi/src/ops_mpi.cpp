@@ -20,24 +20,13 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
   int rank = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  int is_valid = 0;
-  if (rank == 0) {
-    is_valid = 1;
-  }
+  int is_valid = 1;
 
   MPI_Bcast(&is_valid, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  if (is_valid == 0) {
-    int mpi_initialized;
-    MPI_Initialized(&mpi_initialized);
-    if (mpi_initialized) {
-      MPI_Finalize();
-    }
-    return false;
-  }
-
-  return true;
+  return is_valid != 0;
 }
+
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   int rank = 0;
   int size = 0;
@@ -49,6 +38,7 @@ bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
+
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank = 0;
   int size = 1;
@@ -68,6 +58,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     if (rank == 0) {
       GetOutput() = std::vector<int>();
     }
+    MPI_Barrier(MPI_COMM_WORLD);
     return true;
   }
 
@@ -82,7 +73,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     local_data.resize(local_size, 0);
   }
 
-  int *sendbuf = (rank == 0) ? input.data() : nullptr;
+  int *sendbuf = (rank == 0 && n > 0) ? input.data() : nullptr;
   int *recvbuf = (local_size > 0) ? local_data.data() : nullptr;
 
   MPI_Scatterv(sendbuf, counts.data(), displs.data(), MPI_INT, recvbuf, local_size, MPI_INT, 0, MPI_COMM_WORLD);
@@ -171,6 +162,7 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::Merge(const std::vector<int> &left, c
 
   return result;
 }
+
 std::vector<int> ShkrylevaSQSortSMergeMPI::QuickSortWithMerge(const std::vector<int> &arr) {
   if (arr.empty()) {
     return std::vector<int>();
