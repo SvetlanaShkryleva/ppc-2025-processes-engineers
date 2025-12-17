@@ -14,10 +14,6 @@
 
 namespace shkryleva_s_qsort_smerge {
 
-using InType = std::vector<int>;
-using OutType = std::vector<int>;
-using TestType = std::tuple<InType, std::string>;
-
 class ShkrylevaSQSortSMergeFuncTests : public ppc::util::BaseRunFuncTests<InType, OutType, TestType> {
  public:
   static std::string PrintTestParam(const TestType &test_param) {
