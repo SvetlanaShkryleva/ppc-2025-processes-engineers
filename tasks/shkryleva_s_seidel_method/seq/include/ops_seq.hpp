@@ -20,10 +20,10 @@ class ShkrylevaSSeidelMethodSEQ : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  void GenerateRandomMatrix(int size, std::vector<std::vector<double>> &matrix, std::vector<double> &vector);
-  void ComputeRightHandSide(int n, const std::vector<std::vector<double>> &a, std::vector<double> &b);
-  double PerformSeidelIteration(int n, const std::vector<std::vector<double>> &a, const std::vector<double> &b,
-                                std::vector<double> &x);
+  static void GenerateRandomMatrix(int size, std::vector<std::vector<double>> &matrix, std::vector<double> &vector);
+  static void ComputeRightHandSide(int n, const std::vector<std::vector<double>> &a, std::vector<double> &b);
+  static double PerformSeidelIteration(int n, const std::vector<std::vector<double>> &a, const std::vector<double> &b,
+                                       std::vector<double> &x);
 
  private:
   int n_;

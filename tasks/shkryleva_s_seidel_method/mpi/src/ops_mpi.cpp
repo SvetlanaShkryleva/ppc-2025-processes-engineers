@@ -130,23 +130,56 @@ void ShkrylevaSSeidelMethodMPI::InitializeMatrixAndVector(std::vector<double> &f
 
     for (int j = 0; j < n; j++) {
       if (i != j) {
-        double val = static_cast<double>(dist(gen));
-        flat_matrix[static_cast<size_t>(i) * n + j] = val;
+        auto val = static_cast<double>(dist(gen));
+        flat_matrix[(static_cast<size_t>(i) * n) + j] = val;
         row_sum += std::abs(val);
       }
     }
 
-    flat_matrix[static_cast<size_t>(i) * n + i] = row_sum + static_cast<double>(dist_diag(gen));
+    flat_matrix[(static_cast<size_t>(i) * n) + i] = row_sum + static_cast<double>(dist_diag(gen));
   }
 
   std::vector<double> x_exact(n, 1.0);
   for (int i = 0; i < n; i++) {
     double sum = 0.0;
     for (int j = 0; j < n; j++) {
-      sum += flat_matrix[static_cast<size_t>(i) * n + j] * x_exact[j];
+      sum += flat_matrix[(static_cast<size_t>(i) * n) + j] * x_exact[j];
     }
     b[i] = sum;
   }
+}
+
+double ShkrylevaSSeidelMethodMPI::PerformLocalIteration(int local_rows, int start_row, int n,
+                                                        const std::vector<double> &local_matrix,
+                                                        const std::vector<double> &local_b, std::vector<double> &x) {
+  double local_max_diff = 0.0;
+  for (int i = 0; i < local_rows; i++) {
+    int global_i = start_row + i;
+    double sum_off_diag = 0.0;
+
+    for (int j = 0; j < n; j++) {
+      if (j != global_i) {
+        sum_off_diag += local_matrix[(static_cast<size_t>(i) * n) + j] * x[j];
+      }
+    }
+
+    const double new_xi = (local_b[i] - sum_off_diag) / local_matrix[(static_cast<size_t>(i) * n) + global_i];
+    const double diff = std::abs(new_xi - x[global_i]);
+    local_max_diff = std::max(diff, local_max_diff);
+    x[global_i] = new_xi;
+  }
+  return local_max_diff;
+}
+
+void ShkrylevaSSeidelMethodMPI::GatherX(int local_rows, int start_row, std::vector<double> &x,
+                                        const std::vector<int> &row_counts, const std::vector<int> &row_displs) {
+  std::vector<double> local_x_updated(local_rows);
+  for (int i = 0; i < local_rows; ++i) {
+    local_x_updated[i] = x[start_row + i];
+  }
+
+  MPI_Allgatherv(local_x_updated.data(), local_rows, MPI_DOUBLE, x.data(), row_counts.data(), row_displs.data(),
+                 MPI_DOUBLE, MPI_COMM_WORLD);
 }
 
 bool ShkrylevaSSeidelMethodMPI::SolveIteratively(int local_rows, int start_row, int n,
@@ -159,35 +192,9 @@ bool ShkrylevaSSeidelMethodMPI::SolveIteratively(int local_rows, int start_row, 
   while (iteration < max_iterations) {
     std::vector<double> x_old = x;
 
-    for (int i = 0; i < local_rows; i++) {
-      int global_i = start_row + i;
-      double sum_off_diag = 0.0;
+    double local_max_diff = PerformLocalIteration(local_rows, start_row, n, local_matrix, local_b, x);
 
-      for (int j = 0; j < n; j++) {
-        if (j != global_i) {
-          sum_off_diag += local_matrix[static_cast<size_t>(i) * n + j] * x[j];
-        }
-      }
-
-      x[global_i] = (local_b[i] - sum_off_diag) / local_matrix[static_cast<size_t>(i) * n + global_i];
-    }
-
-    std::vector<double> local_x_updated(local_rows);
-    for (int i = 0; i < local_rows; ++i) {
-      local_x_updated[i] = x[start_row + i];
-    }
-
-    MPI_Allgatherv(local_x_updated.data(), local_rows, MPI_DOUBLE, x.data(), row_counts.data(), row_displs.data(),
-                   MPI_DOUBLE, MPI_COMM_WORLD);
-
-    double local_max_diff = 0.0;
-    for (int i = 0; i < local_rows; i++) {
-      int gi = start_row + i;
-      double diff = std::abs(x[gi] - x_old[gi]);
-      if (diff > local_max_diff) {
-        local_max_diff = diff;
-      }
-    }
+    GatherX(local_rows, start_row, x, row_counts, row_displs);
 
     double global_max_diff = 0.0;
     MPI_Allreduce(&local_max_diff, &global_max_diff, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);

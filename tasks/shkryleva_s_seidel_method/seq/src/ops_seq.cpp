@@ -9,7 +9,7 @@
 
 namespace shkryleva_s_seidel_method {
 
-ShkrylevaSSeidelMethodSEQ::ShkrylevaSSeidelMethodSEQ(const InType &in) {
+ShkrylevaSSeidelMethodSEQ::ShkrylevaSSeidelMethodSEQ(const InType &in) : n_(0), epsilon_(0.0), max_iterations_(0) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
   GetOutput() = 0;
@@ -96,7 +96,7 @@ double ShkrylevaSSeidelMethodSEQ::PerformSeidelIteration(int n, const std::vecto
   double max_diff = 0.0;
 
   for (int i = 0; i < n; ++i) {
-    double old = x[i];
+    const double old = x[i];
     double sum_off_diag = 0.0;
 
     for (int j = 0; j < n; ++j) {
@@ -106,10 +106,8 @@ double ShkrylevaSSeidelMethodSEQ::PerformSeidelIteration(int n, const std::vecto
     }
 
     x[i] = (b[i] - sum_off_diag) / a[i][i];
-    double diff = std::abs(x[i] - old);
-    if (diff > max_diff) {
-      max_diff = diff;
-    }
+    const double diff = std::abs(x[i] - old);
+    max_diff = std::max(diff, max_diff);
   }
 
   return max_diff;

@@ -20,14 +20,18 @@ class ShkrylevaSSeidelMethodMPI : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  void ComputeRowDistribution(int n, int size, std::vector<int> &row_counts, std::vector<int> &row_displs,
-                              std::vector<int> &matrix_counts, std::vector<int> &matrix_displs);
+  static void ComputeRowDistribution(int n, int size, std::vector<int> &row_counts, std::vector<int> &row_displs,
+                                     std::vector<int> &matrix_counts, std::vector<int> &matrix_displs);
+  static void InitializeMatrixAndVector(std::vector<double> &flat_matrix, std::vector<double> &b, int n);
+  static bool SolveIteratively(int local_rows, int start_row, int n, const std::vector<double> &local_matrix,
+                               const std::vector<double> &local_b, std::vector<double> &x,
+                               const std::vector<int> &row_counts, const std::vector<int> &row_displs, double epsilon,
+                               int max_iterations);
 
-  void InitializeMatrixAndVector(std::vector<double> &flat_matrix, std::vector<double> &b, int n);
-
-  bool SolveIteratively(int local_rows, int start_row, int n, const std::vector<double> &local_matrix,
-                        const std::vector<double> &local_b, std::vector<double> &x, const std::vector<int> &row_counts,
-                        const std::vector<int> &row_displs, double epsilon, int max_iterations);
+  static double PerformLocalIteration(int local_rows, int start_row, int n, const std::vector<double> &local_matrix,
+                                      const std::vector<double> &local_b, std::vector<double> &x);
+  static void GatherX(int local_rows, int start_row, std::vector<double> &x, const std::vector<int> &row_counts,
+                      const std::vector<int> &row_displs);
 };
 
 }  // namespace shkryleva_s_seidel_method
