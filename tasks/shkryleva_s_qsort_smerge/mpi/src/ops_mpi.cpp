@@ -22,6 +22,10 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 
   int is_valid = 1;
 
+  if (rank == 0) {
+    is_valid = 1;
+  }
+
   MPI_Bcast(&is_valid, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   return is_valid != 0;

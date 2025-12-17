@@ -62,7 +62,7 @@ TEST_P(ShkrylevaSQSortSMergeFuncTests, QSortSMergeTest) {
 const std::array<TestType, 9> kTestParam = {
     std::make_tuple(std::vector<int>{5, 3, 8, 6, 2, 7}, "test_sort_array"),
     std::make_tuple(std::vector<int>{42}, "test_single_element"),
-    std::make_tuple(std::vector<int>{7, 7, 7, 7}, "test_all_equal_elements"),
+    std::make_tuple(std::vector<int>{7, 7, 7, 7, 7}, "test_all_equal_elements"),
     std::make_tuple(std::vector<int>{-3, 2, -1, 0, 1}, "test_negative_and_positive"),
 
     std::make_tuple(std::vector<int>{}, "test_empty_array"),
