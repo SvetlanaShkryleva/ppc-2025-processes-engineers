@@ -2,14 +2,15 @@
 
 #include <string>
 #include <tuple>
+#include <vector>
 
 #include "task/include/task.hpp"
 
-namespace nesterov_a_test_task_processes_3 {
+namespace shkryleva_s_qsort_smerge {
 
-using InType = int;
-using OutType = int;
+using InType = std::vector<int>;
+using OutType = std::vector<int>;
 using TestType = std::tuple<int, std::string>;
 using BaseTask = ppc::task::Task<InType, OutType>;
 
-}  // namespace nesterov_a_test_task_processes_3
+}  // namespace shkryleva_s_qsort_smerge

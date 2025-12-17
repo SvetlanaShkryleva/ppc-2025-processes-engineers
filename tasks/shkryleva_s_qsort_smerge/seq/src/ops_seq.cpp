@@ -7,7 +7,7 @@
 
 namespace shkryleva_s_qsort_smerge {
 
-ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const std::vector<int> &in) {
+ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
   GetOutput() = std::vector<int>();

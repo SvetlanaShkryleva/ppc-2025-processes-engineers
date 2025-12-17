@@ -22,8 +22,6 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
-  std::vector<int> input_;
-  std::vector<int> output_;
 
   static std::vector<int> Merge(const std::vector<int> &left, const std::vector<int> &right);
   std::vector<int> QuickSortWithMerge(const std::span<int> &arr);

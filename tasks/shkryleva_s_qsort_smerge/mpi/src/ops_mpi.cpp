@@ -3,9 +3,7 @@
 #include <mpi.h>
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
-#include <random>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
@@ -49,12 +47,18 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  // Получаем входной вектор
+  std::vector<int> input;
   int n = 0;
   if (rank == 0) {
-    n = GetInput().size();
+    input = GetInput();
+    n = input.size();
   }
+
+  // Рассылаем размер вектора
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+  // Распределение данных по процессам
   std::vector<int> counts(size);
   std::vector<int> displs(size);
   ComputeDistribution(n, size, counts, displs);
@@ -62,38 +66,37 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int local_size = counts[rank];
   std::vector<int> local_data(local_size, 0);
 
-  std::vector<int> full_data;
-  if (rank == 0) {
-    full_data = GetInput();
+  // Разбрасываем данные (только если есть что разбрасывать)
+  if (n > 0) {
+    MPI_Scatterv(input.data(), counts.data(), displs.data(), MPI_INT, local_data.data(), local_size, MPI_INT, 0,
+                 MPI_COMM_WORLD);
   }
 
-  MPI_Scatterv(full_data.data(), counts.data(), displs.data(), MPI_INT, local_data.data(), local_size, MPI_INT, 0,
-               MPI_COMM_WORLD);
-
+  // Сортируем локальные данные
   local_data = QuickSortWithMerge(local_data);
 
+  // Собираем отсортированные части
   std::vector<int> gathered_data;
   if (rank == 0) {
     gathered_data.resize(n);
   }
 
-  std::vector<int> recv_counts(size);
-  std::vector<int> recv_displs(size);
-  for (int i = 0; i < size; ++i) {
-    recv_counts[i] = counts[i];
-    recv_displs[i] = displs[i];
+  if (n > 0) {
+    MPI_Gatherv(local_data.data(), local_size, MPI_INT, gathered_data.data(), counts.data(), displs.data(), MPI_INT, 0,
+                MPI_COMM_WORLD);
   }
 
-  MPI_Gatherv(local_data.data(), local_size, MPI_INT, gathered_data.data(), recv_counts.data(), recv_displs.data(),
-              MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (rank == 0) {
-    output_ = std::vector<int>(gathered_data.begin(), gathered_data.begin() + counts[0]);
+  // В процессе 0 выполняем финальное слияние
+  if (rank == 0 && n > 0) {
+    std::vector<int> sorted_data = std::vector<int>(gathered_data.begin(), gathered_data.begin() + counts[0]);
     for (int i = 1; i < size; ++i) {
       std::vector<int> part(gathered_data.begin() + displs[i], gathered_data.begin() + displs[i] + counts[i]);
-      output_ = Merge(output_, part);
+      sorted_data = Merge(sorted_data, part);
     }
-    GetOutput() = output_;
+
+    GetOutput() = sorted_data;
+  } else if (rank == 0) {
+    GetOutput() = std::vector<int>();
   }
 
   return true;
@@ -114,17 +117,6 @@ void ShkrylevaSQSortSMergeMPI::ComputeDistribution(int n, int size, std::vector<
     counts[proc] = proc_size;
     displs[proc] = offset;
     offset += proc_size;
-  }
-}
-
-void ShkrylevaSQSortSMergeMPI::InitializeRandomVector(std::vector<int> &vec, int n) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> dist(1, 1000);
-
-  vec.resize(n);
-  for (int i = 0; i < n; ++i) {
-    vec[i] = dist(gen);
   }
 }
 
@@ -158,7 +150,6 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::QuickSortWithMerge(const std::vector<
   std::vector<int> left;
   std::vector<int> right;
   std::vector<int> equal;
-
   for (const auto &elem : arr) {
     if (elem < pivot) {
       left.emplace_back(elem);
