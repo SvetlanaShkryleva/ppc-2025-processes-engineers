@@ -1,5 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <numeric>
+#include <random>
+#include <vector>
+
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
 #include "shkryleva_s_qsort_smerge/mpi/include/ops_mpi.hpp"
 #include "shkryleva_s_qsort_smerge/seq/include/ops_seq.hpp"
@@ -14,11 +19,33 @@ class ShkrylevaSQSortSMergePerfTests : public ppc::util::BaseRunPerfTests<InType
 
  protected:
   void SetUp() override {
-    input_data_ = kCount_;
+    input_data_.resize(kCount_);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 10000);
+
+    for (int i = 0; i < kCount_; ++i) {
+      input_data_[i] = dist(gen);
+    }
   }
 
   bool CheckTestOutputData(OutType &output_data) override {
-    return input_data_ == output_data;
+    if (input_data_.size() != output_data.size()) {
+      return false;
+    }
+
+    if (!std::is_sorted(output_data.begin(), output_data.end())) {
+      return false;
+    }
+
+    std::vector<int> input_copy = input_data_;
+    std::vector<int> output_copy = output_data;
+
+    std::sort(input_copy.begin(), input_copy.end());
+    std::sort(output_copy.begin(), output_copy.end());
+
+    return input_copy == output_copy;
   }
 
   InType GetTestInputData() override {
