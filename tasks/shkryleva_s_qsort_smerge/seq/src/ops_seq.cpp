@@ -14,7 +14,7 @@ ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &in) {
 }
 
 bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
-  return !GetInput().empty() && GetOutput().empty();
+  return GetOutput().empty();
 }
 
 bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
@@ -43,7 +43,11 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::Merge(const std::vector<int> &left, c
 }
 
 std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::span<int> &arr) {
-  if (arr.size() <= 1) {
+  if (arr.empty()) {
+    return std::vector<int>();
+  }
+
+  if (arr.size() == 1) {
     std::vector<int> res;
     res.assign(arr.begin(), arr.end());
     return res;
@@ -73,13 +77,14 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::span<in
 
 bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
   if (GetInput().empty()) {
-    return false;
+    GetOutput() = std::vector<int>();
+    return true;
   }
 
   std::vector<int> sorted = QuickSortWithMerge(GetInput());
   GetOutput() = sorted;
 
-  return !GetOutput().empty();
+  return true;
 }
 
 bool ShkrylevaSQSortSMergeSEQ::PostProcessingImpl() {
