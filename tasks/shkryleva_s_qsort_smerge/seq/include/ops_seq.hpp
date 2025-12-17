@@ -1,22 +1,32 @@
 #pragma once
 
-#include "example_processes_3/common/include/common.hpp"
+#include <cmath>
+#include <memory>
+#include <span>
+#include <vector>
+
+#include "shkryleva_s_qsort_smerge/common/include/common.hpp"
 #include "task/include/task.hpp"
 
-namespace nesterov_a_test_task_processes_3 {
+namespace shkryleva_s_qsort_smerge {
 
-class NesterovATestTaskSEQ : public BaseTask {
+class ShkrylevaSQSortSMergeSEQ : public BaseTask {
  public:
   static constexpr ppc::task::TypeOfTask GetStaticTypeOfTask() {
     return ppc::task::TypeOfTask::kSEQ;
   }
-  explicit NesterovATestTaskSEQ(const InType &in);
+  explicit ShkrylevaSQSortSMergeSEQ(const InType &in);
 
  private:
   bool ValidationImpl() override;
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
+  std::vector<int> input_;
+  std::vector<int> output_;
+
+  static std::vector<int> Merge(const std::vector<int> &left, const std::vector<int> &right);
+  std::vector<int> QuickSortWithMerge(const std::span<int> &arr);
 };
 
-}  // namespace nesterov_a_test_task_processes_3
+}  // namespace shkryleva_s_qsort_smerge

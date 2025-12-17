@@ -1,60 +1,89 @@
-#include "example_processes_3/seq/include/ops_seq.hpp"
+#include "shkryleva_s_qsort_smerge/seq/include/ops_seq.hpp"
 
-#include <numeric>
+#include <span>
 #include <vector>
 
-#include "example_processes_3/common/include/common.hpp"
-#include "util/include/util.hpp"
+#include "shkryleva_s_qsort_smerge/common/include/common.hpp"
 
-namespace nesterov_a_test_task_processes_3 {
+namespace shkryleva_s_qsort_smerge {
 
-NesterovATestTaskSEQ::NesterovATestTaskSEQ(const InType &in) {
+ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const std::vector<int> &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
-  GetOutput() = 0;
+  GetOutput() = std::vector<int>();
 }
 
-bool NesterovATestTaskSEQ::ValidationImpl() {
-  return (GetInput() > 0) && (GetOutput() == 0);
+bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
+  return !GetInput().empty() && GetOutput().empty();
 }
 
-bool NesterovATestTaskSEQ::PreProcessingImpl() {
-  GetOutput() = 2 * GetInput();
-  return GetOutput() > 0;
+bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
+  return true;
 }
 
-bool NesterovATestTaskSEQ::RunImpl() {
-  if (GetInput() == 0) {
-    return false;
-  }
+std::vector<int> ShkrylevaSQSortSMergeSEQ::Merge(const std::vector<int> &left, const std::vector<int> &right) {
+  std::vector<int> result;
+  result.reserve(left.size() + right.size());
 
-  for (InType i = 0; i < GetInput(); i++) {
-    for (InType j = 0; j < GetInput(); j++) {
-      for (InType k = 0; k < GetInput(); k++) {
-        std::vector<InType> tmp(i + j + k, 1);
-        GetOutput() += std::accumulate(tmp.begin(), tmp.end(), 0);
-        GetOutput() -= i + j + k;
-      }
+  size_t i = 0;
+  size_t j = 0;
+
+  while (i < left.size() && j < right.size()) {
+    if (left[i] < right[j]) {
+      result.push_back(left[i++]);
+    } else {
+      result.push_back(right[j++]);
     }
   }
 
-  const int num_threads = ppc::util::GetNumThreads();
-  GetOutput() *= num_threads;
+  result.insert(result.end(), left.begin() + i, left.end());
+  result.insert(result.end(), right.begin() + j, right.end());
 
-  int counter = 0;
-  for (int i = 0; i < num_threads; i++) {
-    counter++;
-  }
-
-  if (counter != 0) {
-    GetOutput() /= counter;
-  }
-  return GetOutput() > 0;
+  return result;
 }
 
-bool NesterovATestTaskSEQ::PostProcessingImpl() {
-  GetOutput() -= GetInput();
-  return GetOutput() > 0;
+std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::span<int> &arr) {
+  if (arr.size() <= 1) {
+    std::vector<int> res;
+    res.assign(arr.begin(), arr.end());
+    return res;
+  }
+
+  int pivot = arr[arr.size() / 2];
+  std::vector<int> left;
+  std::vector<int> right;
+  std::vector<int> equal;
+
+  for (const auto &elem : arr) {
+    if (elem < pivot) {
+      left.emplace_back(elem);
+    } else if (elem > pivot) {
+      right.emplace_back(elem);
+    } else {
+      equal.emplace_back(elem);
+    }
+  }
+
+  std::vector<int> sortedLeft = QuickSortWithMerge(left);
+  std::vector<int> sortedRight = QuickSortWithMerge(right);
+
+  std::vector<int> merged = Merge(sortedLeft, equal);
+  return Merge(merged, sortedRight);
 }
 
-}  // namespace nesterov_a_test_task_processes_3
+bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
+  if (GetInput().empty()) {
+    return false;
+  }
+
+  std::vector<int> sorted = QuickSortWithMerge(GetInput());
+  GetOutput() = sorted;
+
+  return !GetOutput().empty();
+}
+
+bool ShkrylevaSQSortSMergeSEQ::PostProcessingImpl() {
+  return true;
+}
+
+}  // namespace shkryleva_s_qsort_smerge
