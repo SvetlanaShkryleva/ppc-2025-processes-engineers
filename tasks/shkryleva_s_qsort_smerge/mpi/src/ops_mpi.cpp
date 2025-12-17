@@ -162,36 +162,39 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::Merge(const std::vector<int> &left, c
 
   return result;
 }
-
 std::vector<int> ShkrylevaSQSortSMergeMPI::QuickSortWithMerge(const std::vector<int> &arr) {
-  if (arr.empty()) {
-    return std::vector<int>();
-  }
-
-  if (arr.size() == 1) {
-    return std::vector<int>{arr[0]};
+  if (arr.size() <= 1) {
+    return std::vector<int>(arr.begin(), arr.end());
   }
 
   int pivot = arr[arr.size() / 2];
-  std::vector<int> left;
-  std::vector<int> right;
-  std::vector<int> equal;
+
+  std::vector<int> left, right, equal;
+
+  left.reserve(arr.size());
+  right.reserve(arr.size());
+  equal.reserve(arr.size());
 
   for (const auto &elem : arr) {
     if (elem < pivot) {
-      left.emplace_back(elem);
+      left.push_back(elem);
     } else if (elem > pivot) {
-      right.emplace_back(elem);
+      right.push_back(elem);
     } else {
-      equal.emplace_back(elem);
+      equal.push_back(elem);
     }
   }
 
   std::vector<int> sortedLeft = QuickSortWithMerge(left);
   std::vector<int> sortedRight = QuickSortWithMerge(right);
 
-  std::vector<int> merged = Merge(sortedLeft, equal);
-  return Merge(merged, sortedRight);
-}
+  std::vector<int> result;
+  result.reserve(sortedLeft.size() + equal.size() + sortedRight.size());
 
+  result.insert(result.end(), sortedLeft.begin(), sortedLeft.end());
+  result.insert(result.end(), equal.begin(), equal.end());
+  result.insert(result.end(), sortedRight.begin(), sortedRight.end());
+
+  return result;
+}
 }  // namespace shkryleva_s_qsort_smerge
