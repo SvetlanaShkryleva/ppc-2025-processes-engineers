@@ -10,6 +10,7 @@ namespace shkryleva_s_qsort_smerge {
 
 using InType = std::vector<int>;
 using OutType = std::vector<int>;
-using TestType = std::tuple<InType, std::string> using BaseTask = ppc::task::Task<InType, OutType>;
+using TestType = std::tuple<InType, std::string>;
+using BaseTask = ppc::task::Task<InType, OutType>;
 
 }  // namespace shkryleva_s_qsort_smerge
