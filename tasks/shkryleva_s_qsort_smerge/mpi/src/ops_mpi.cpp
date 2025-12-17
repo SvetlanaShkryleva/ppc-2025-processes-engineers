@@ -21,7 +21,6 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   int is_valid = 1;
-
   if (rank == 0) {
     is_valid = 1;
   }
@@ -53,10 +52,12 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int n = 0;
   if (rank == 0) {
     input = GetInput();
-    n = input.size();
+    n = static_cast<int>(input.size());
   }
 
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   if (n == 0) {
     if (rank == 0) {
@@ -74,7 +75,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   std::vector<int> local_data;
 
   if (local_size > 0) {
-    local_data.resize(local_size, 0);
+    local_data.resize(local_size);
   }
 
   int *sendbuf = (rank == 0 && n > 0) ? input.data() : nullptr;
@@ -99,12 +100,12 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               MPI_COMM_WORLD);
 
   if (rank == 0) {
+    std::vector<int> sorted_data;
+
     int first_proc_with_data = 0;
     while (first_proc_with_data < size && counts[first_proc_with_data] == 0) {
       first_proc_with_data++;
     }
-
-    std::vector<int> sorted_data;
 
     if (first_proc_with_data < size) {
       sorted_data =
@@ -117,8 +118,6 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
           sorted_data = Merge(sorted_data, part);
         }
       }
-    } else {
-      sorted_data = std::vector<int>();
     }
 
     GetOutput() = sorted_data;
@@ -134,12 +133,15 @@ bool ShkrylevaSQSortSMergeMPI::PostProcessingImpl() {
 
 void ShkrylevaSQSortSMergeMPI::ComputeDistribution(int n, int size, std::vector<int> &counts,
                                                    std::vector<int> &displs) {
-  int offset = 0;
-  for (int proc = 0; proc < size; ++proc) {
-    int base = n / size;
-    int extra = (proc < (n % size)) ? 1 : 0;
-    int proc_size = base + extra;
+  counts.assign(size, 0);
+  displs.assign(size, 0);
 
+  int base = n / size;
+  int remainder = n % size;
+  int offset = 0;
+
+  for (int proc = 0; proc < size; ++proc) {
+    int proc_size = base + (proc < remainder ? 1 : 0);
     counts[proc] = proc_size;
     displs[proc] = offset;
     offset += proc_size;
@@ -166,6 +168,7 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::Merge(const std::vector<int> &left, c
 
   return result;
 }
+
 std::vector<int> ShkrylevaSQSortSMergeMPI::QuickSortWithMerge(const std::vector<int> &arr) {
   if (arr.size() <= 1) {
     return std::vector<int>(arr.begin(), arr.end());
@@ -201,4 +204,5 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::QuickSortWithMerge(const std::vector<
 
   return result;
 }
+
 }  // namespace shkryleva_s_qsort_smerge
