@@ -25,13 +25,12 @@ class ShkrylevaSSeidelMethodSEQ : public BaseTask {
   static double PerformSeidelIteration(int n, const std::vector<std::vector<double>> &a, const std::vector<double> &b,
                                        std::vector<double> &x);
 
- private:
-  int n_;
+  int n_{0};
   std::vector<std::vector<double>> A_;
   std::vector<double> b_;
   std::vector<double> x_;
-  double epsilon_;
-  int max_iterations_;
+  double epsilon_{0.0};
+  int max_iterations_{0};
 };
 
 }  // namespace shkryleva_s_seidel_method

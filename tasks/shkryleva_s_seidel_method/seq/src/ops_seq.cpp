@@ -1,5 +1,6 @@
 #include "shkryleva_s_seidel_method/seq/include/ops_seq.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <random>
@@ -9,7 +10,7 @@
 
 namespace shkryleva_s_seidel_method {
 
-ShkrylevaSSeidelMethodSEQ::ShkrylevaSSeidelMethodSEQ(const InType &in) : n_(0), epsilon_(0.0), max_iterations_(0) {
+ShkrylevaSSeidelMethodSEQ::ShkrylevaSSeidelMethodSEQ(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = in;
   GetOutput() = 0;
