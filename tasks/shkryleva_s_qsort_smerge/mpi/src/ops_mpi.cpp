@@ -29,44 +29,52 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  std::vector<int> local_data = GetInput();
-  int local_size = static_cast<int>(local_data.size());
-
-  std::vector<int> all_sizes(size);
-  MPI_Allgather(&local_size, 1, MPI_INT, all_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
-
-  int total_elements = 0;
-  for (int sz : all_sizes) {
-    total_elements += sz;
-  }
-
-  std::vector<int> sorted_data;
-  std::vector<int> displs(size);
-
+  int n = 0;
   if (rank == 0) {
-    sorted_data.resize(total_elements);
+    n = static_cast<int>(GetInput().size());
+  }
+  MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (n == 0) {
+    if (rank == 0) {
+      GetOutput() = std::vector<int>();
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    return true;
   }
 
-  int offset = 0;
-  for (int i = 0; i < size; ++i) {
-    displs[i] = offset;
-    offset += all_sizes[i];
+  std::vector<int> all_data(n);
+  if (rank == 0) {
+    all_data = GetInput();
   }
+  MPI_Bcast(all_data.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
 
-  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? sorted_data.data() : nullptr, all_sizes.data(),
+  std::vector<int> counts(size), displs(size);
+  ComputeDistribution(n, size, counts, displs);
+
+  std::vector<int> local_data(counts[rank]);
+  std::copy(all_data.begin() + displs[rank], all_data.begin() + displs[rank] + counts[rank], local_data.begin());
+
+  std::sort(local_data.begin(), local_data.end());
+
+  std::vector<int> gathered_data(n);
+  MPI_Gatherv(local_data.data(), counts[rank], MPI_INT, (rank == 0) ? gathered_data.data() : nullptr, counts.data(),
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    std::sort(sorted_data.begin(), sorted_data.end());
+    std::vector<int> result;
+    if (size == 1) {
+      result = gathered_data;
+    } else {
+      result.assign(gathered_data.begin(), gathered_data.begin() + counts[0]);
+
+      for (int i = 1; i < size; ++i) {
+        std::vector<int> part(gathered_data.begin() + displs[i], gathered_data.begin() + displs[i] + counts[i]);
+        result = Merge(result, part);
+      }
+    }
+    GetOutput() = result;
   }
-
-  if (rank != 0) {
-    sorted_data.resize(total_elements);
-  }
-
-  MPI_Bcast(sorted_data.data(), total_elements, MPI_INT, 0, MPI_COMM_WORLD);
-
-  GetOutput() = sorted_data;
 
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
