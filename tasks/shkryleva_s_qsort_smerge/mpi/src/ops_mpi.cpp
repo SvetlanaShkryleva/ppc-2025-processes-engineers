@@ -35,13 +35,16 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+  std::vector<int> local_data(n);
   if (rank == 0) {
-    std::vector<int> result = GetInput();
-    std::sort(result.begin(), result.end());
-    GetOutput() = result;
-  } else {
-    GetOutput() = std::vector<int>();
+    local_data = GetInput();
   }
+
+  MPI_Bcast(local_data.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
+
+  std::sort(local_data.begin(), local_data.end());
+
+  GetOutput() = local_data;
 
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
