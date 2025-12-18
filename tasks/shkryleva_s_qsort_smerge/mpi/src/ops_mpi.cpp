@@ -23,10 +23,10 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   return true;
 }
+
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
-  int rank, size;
+  int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   int n = 0;
   if (rank == 0) {
@@ -35,50 +35,12 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  if (n == 0) {
-    if (rank == 0) {
-      GetOutput() = std::vector<int>();
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    return true;
-  }
-
-  std::vector<int> all_data;
   if (rank == 0) {
-    all_data = GetInput();
+    std::vector<int> result = GetInput();
+    std::sort(result.begin(), result.end());
+    GetOutput() = result;
   } else {
-    all_data.resize(n);
-  }
-
-  MPI_Bcast(all_data.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
-
-  std::vector<int> counts(size);
-  std::vector<int> displs(size);
-  ComputeDistribution(n, size, counts, displs);
-
-  int local_size = counts[rank];
-  std::vector<int> local_data(all_data.begin() + displs[rank], all_data.begin() + displs[rank] + local_size);
-
-  std::sort(local_data.begin(), local_data.end());
-
-  std::vector<int> gathered_data;
-  if (rank == 0) {
-    gathered_data.resize(n);
-  }
-
-  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? gathered_data.data() : nullptr, counts.data(),
-              displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (rank == 0) {
-    if (gathered_data.empty()) {
-      std::vector<int> result = GetInput();
-      std::sort(result.begin(), result.end());
-      GetOutput() = result;
-    } else {
-      std::vector<int> result = gathered_data;
-      std::sort(result.begin(), result.end());
-      GetOutput() = result;
-    }
+    GetOutput() = std::vector<int>();
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
