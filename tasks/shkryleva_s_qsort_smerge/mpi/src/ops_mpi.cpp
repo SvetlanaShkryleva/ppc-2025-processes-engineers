@@ -23,53 +23,49 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   return true;
 }
-
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  std::vector<int> input = GetInput();
-  int n = static_cast<int>(input.size());
-
-  MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (n == 0) {
-    GetOutput() = std::vector<int>();
-    MPI_Barrier(MPI_COMM_WORLD);
-    return true;
-  }
-
-  std::vector<int> all_data;
+  std::vector<int> local_data = GetInput();
+  int local_size = static_cast<int>(local_data.size());
 
   std::vector<int> all_sizes(size);
-  MPI_Allgather(&n, 1, MPI_INT, all_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(&local_size, 1, MPI_INT, all_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
 
   int total_elements = 0;
   for (int sz : all_sizes) {
     total_elements += sz;
   }
 
+  std::vector<int> all_data;
+  std::vector<int> displs(size);
+
   if (rank == 0) {
     all_data.resize(total_elements);
   }
 
-  std::vector<int> displs(size);
   int offset = 0;
   for (int i = 0; i < size; ++i) {
     displs[i] = offset;
     offset += all_sizes[i];
   }
 
-  MPI_Gatherv(input.data(), n, MPI_INT, (rank == 0) ? all_data.data() : nullptr, all_sizes.data(), displs.data(),
-              MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? all_data.data() : nullptr, all_sizes.data(),
+              displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
     std::sort(all_data.begin(), all_data.end());
-    GetOutput() = all_data;
-  } else {
-    GetOutput() = std::vector<int>();
   }
+
+  int sorted_size = total_elements;
+
+  std::vector<int> sorted_data(sorted_size);
+
+  MPI_Bcast(sorted_data.data(), sorted_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+  GetOutput() = sorted_data;
 
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
