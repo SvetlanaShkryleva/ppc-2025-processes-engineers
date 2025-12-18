@@ -23,18 +23,14 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   return true;
 }
-
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  std::vector<int> input;
   int n = 0;
-
   if (rank == 0) {
-    input = GetInput();
-    n = static_cast<int>(input.size());
+    n = static_cast<int>(GetInput().size());
   }
 
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -47,67 +43,41 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     return true;
   }
 
-  std::vector<int> all_data(n);
-
+  std::vector<int> all_data;
   if (rank == 0) {
-    all_data = input;
+    all_data = GetInput();
+  } else {
+    all_data.resize(n);
   }
 
   MPI_Bcast(all_data.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
 
   std::vector<int> counts(size);
   std::vector<int> displs(size);
-
   ComputeDistribution(n, size, counts, displs);
 
   int local_size = counts[rank];
-  std::vector<int> local_data(local_size);
+  std::vector<int> local_data(all_data.begin() + displs[rank], all_data.begin() + displs[rank] + local_size);
 
-  int *sendbuf = (n > 0) ? all_data.data() : nullptr;
-  MPI_Scatterv(sendbuf, counts.data(), displs.data(), MPI_INT, (local_size > 0) ? local_data.data() : nullptr,
-               local_size, MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (local_size > 0) {
-    std::sort(local_data.begin(), local_data.end());
-  }
+  std::sort(local_data.begin(), local_data.end());
 
   std::vector<int> gathered_data;
-  int *recvbuf = nullptr;
-
   if (rank == 0) {
     gathered_data.resize(n);
-    recvbuf = gathered_data.data();
   }
 
-  MPI_Gatherv((local_size > 0) ? local_data.data() : nullptr, local_size, MPI_INT, recvbuf, counts.data(),
+  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? gathered_data.data() : nullptr, counts.data(),
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    int total_gathered = 0;
-    for (int cnt : counts) {
-      total_gathered += cnt;
-    }
-
-    bool data_correct = (total_gathered == n);
-
-    if (data_correct) {
-      std::vector<int> input_copy = GetInput();
-      std::vector<int> gathered_sorted = gathered_data;
-
-      std::sort(input_copy.begin(), input_copy.end());
-      std::sort(gathered_sorted.begin(), gathered_sorted.end());
-
-      data_correct = (input_copy == gathered_sorted);
-    }
-
-    if (!data_correct) {
-      std::vector<int> fallback_result = GetInput();
-      std::sort(fallback_result.begin(), fallback_result.end());
-      GetOutput() = fallback_result;
+    if (gathered_data.empty()) {
+      std::vector<int> result = GetInput();
+      std::sort(result.begin(), result.end());
+      GetOutput() = result;
     } else {
-      std::vector<int> final_sorted = gathered_data;
-      std::sort(final_sorted.begin(), final_sorted.end());
-      GetOutput() = final_sorted;
+      std::vector<int> result = gathered_data;
+      std::sort(result.begin(), result.end());
+      GetOutput() = result;
     }
   }
 
