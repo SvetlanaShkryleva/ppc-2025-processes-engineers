@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <iostream>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
@@ -22,32 +21,26 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 }
 
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
-  int rank = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-  GetOutput() = std::vector<int>();
-
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
 
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
-  int rank = 0;
-  int size = 0;
+  int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  std::vector<int> global_data;
-  int global_size = 0;
+  std::vector<int> input;
+  int n = 0;
 
   if (rank == 0) {
-    global_data = GetInput();
-    global_size = static_cast<int>(global_data.size());
+    input = GetInput();
+    n = static_cast<int>(input.size());
   }
 
-  MPI_Bcast(&global_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  if (global_size == 0) {
+  if (n == 0) {
     if (rank == 0) {
       GetOutput() = std::vector<int>();
     }
@@ -55,65 +48,72 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     return true;
   }
 
-  std::vector<int> counts(size, 0);
-  std::vector<int> displs(size, 0);
+  std::vector<int> all_data(n);
 
-  int base = global_size / size;
-  int remainder = global_size % size;
-  int offset = 0;
-
-  for (int i = 0; i < size; ++i) {
-    counts[i] = base + (i < remainder ? 1 : 0);
-    displs[i] = offset;
-    offset += counts[i];
+  if (rank == 0) {
+    all_data = input;
   }
+
+  MPI_Bcast(all_data.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
+
+  std::vector<int> counts(size);
+  std::vector<int> displs(size);
+
+  ComputeDistribution(n, size, counts, displs);
 
   int local_size = counts[rank];
   std::vector<int> local_data(local_size);
 
-  MPI_Scatterv(rank == 0 ? global_data.data() : nullptr, counts.data(), displs.data(), MPI_INT, local_data.data(),
+  int *sendbuf = (n > 0) ? all_data.data() : nullptr;
+  MPI_Scatterv(sendbuf, counts.data(), displs.data(), MPI_INT, (local_size > 0) ? local_data.data() : nullptr,
                local_size, MPI_INT, 0, MPI_COMM_WORLD);
 
-  std::sort(local_data.begin(), local_data.end());
-
-  std::vector<int> gathered_data;
-  if (rank == 0) {
-    gathered_data.resize(global_size);
+  if (local_size > 0) {
+    std::sort(local_data.begin(), local_data.end());
   }
 
-  MPI_Gatherv(local_data.data(), local_size, MPI_INT, rank == 0 ? gathered_data.data() : nullptr, counts.data(),
+  std::vector<int> gathered_data;
+  int *recvbuf = nullptr;
+
+  if (rank == 0) {
+    gathered_data.resize(n);
+    recvbuf = gathered_data.data();
+  }
+
+  MPI_Gatherv((local_size > 0) ? local_data.data() : nullptr, local_size, MPI_INT, recvbuf, counts.data(),
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
     if (size == 1) {
       GetOutput() = gathered_data;
     } else {
-      std::vector<int> result;
+      std::vector<int> sorted_data;
+      int first_non_empty = 0;
 
-      int first_proc = 0;
-      while (first_proc < size && counts[first_proc] == 0) {
-        first_proc++;
+      while (first_non_empty < size && counts[first_non_empty] == 0) {
+        first_non_empty++;
       }
 
-      if (first_proc < size) {
-        int start_idx = displs[first_proc];
-        int end_idx = start_idx + counts[first_proc];
-        result = std::vector<int>(gathered_data.begin() + start_idx, gathered_data.begin() + end_idx);
+      if (first_non_empty < size) {
+        int start = displs[first_non_empty];
+        int end = start + counts[first_non_empty];
+        sorted_data.assign(gathered_data.begin() + start, gathered_data.begin() + end);
 
-        for (int i = first_proc + 1; i < size; ++i) {
+        for (int i = first_non_empty + 1; i < size; ++i) {
           if (counts[i] > 0) {
             int part_start = displs[i];
             int part_end = part_start + counts[i];
             std::vector<int> part(gathered_data.begin() + part_start, gathered_data.begin() + part_end);
 
-            std::vector<int> merged(result.size() + part.size());
-            std::merge(result.begin(), result.end(), part.begin(), part.end(), merged.begin());
-            result = std::move(merged);
+            std::vector<int> merged;
+            merged.reserve(sorted_data.size() + part.size());
+            std::merge(sorted_data.begin(), sorted_data.end(), part.begin(), part.end(), std::back_inserter(merged));
+            sorted_data = std::move(merged);
           }
         }
       }
 
-      GetOutput() = result;
+      GetOutput() = sorted_data;
     }
   }
 
@@ -145,13 +145,28 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::Merge(const std::vector<int> &left, c
   std::vector<int> result;
   result.reserve(left.size() + right.size());
 
-  std::merge(left.begin(), left.end(), right.begin(), right.end(), std::back_inserter(result));
+  size_t i = 0, j = 0;
+
+  while (i < left.size() && j < right.size()) {
+    if (left[i] < right[j]) {
+      result.push_back(left[i++]);
+    } else {
+      result.push_back(right[j++]);
+    }
+  }
+
+  while (i < left.size()) {
+    result.push_back(left[i++]);
+  }
+
+  while (j < right.size()) {
+    result.push_back(right[j++]);
+  }
 
   return result;
 }
 
 std::vector<int> ShkrylevaSQSortSMergeMPI::QuickSortWithMerge(const std::vector<int> &arr) {
-  // Простая реализация с использованием std::sort
   std::vector<int> result = arr;
   std::sort(result.begin(), result.end());
   return result;
