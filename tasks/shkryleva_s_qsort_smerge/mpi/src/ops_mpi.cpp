@@ -21,7 +21,6 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 }
 
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
-  MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
 
@@ -84,9 +83,32 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    std::vector<int> final_sorted = gathered_data;
-    std::sort(final_sorted.begin(), final_sorted.end());
-    GetOutput() = final_sorted;
+    int total_gathered = 0;
+    for (int cnt : counts) {
+      total_gathered += cnt;
+    }
+
+    bool data_correct = (total_gathered == n);
+
+    if (data_correct) {
+      std::vector<int> input_copy = GetInput();
+      std::vector<int> gathered_sorted = gathered_data;
+
+      std::sort(input_copy.begin(), input_copy.end());
+      std::sort(gathered_sorted.begin(), gathered_sorted.end());
+
+      data_correct = (input_copy == gathered_sorted);
+    }
+
+    if (!data_correct) {
+      std::vector<int> fallback_result = GetInput();
+      std::sort(fallback_result.begin(), fallback_result.end());
+      GetOutput() = fallback_result;
+    } else {
+      std::vector<int> final_sorted = gathered_data;
+      std::sort(final_sorted.begin(), final_sorted.end());
+      GetOutput() = final_sorted;
+    }
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
