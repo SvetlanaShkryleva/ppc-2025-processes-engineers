@@ -23,6 +23,7 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   return true;
 }
+
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -39,11 +40,11 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     total_elements += sz;
   }
 
-  std::vector<int> all_data;
+  std::vector<int> sorted_data;
   std::vector<int> displs(size);
 
   if (rank == 0) {
-    all_data.resize(total_elements);
+    sorted_data.resize(total_elements);
   }
 
   int offset = 0;
@@ -52,18 +53,18 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     offset += all_sizes[i];
   }
 
-  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? all_data.data() : nullptr, all_sizes.data(),
+  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? sorted_data.data() : nullptr, all_sizes.data(),
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    std::sort(all_data.begin(), all_data.end());
+    std::sort(sorted_data.begin(), sorted_data.end());
   }
 
-  int sorted_size = total_elements;
+  if (rank != 0) {
+    sorted_data.resize(total_elements);
+  }
 
-  std::vector<int> sorted_data(sorted_size);
-
-  MPI_Bcast(sorted_data.data(), sorted_size, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(sorted_data.data(), total_elements, MPI_INT, 0, MPI_COMM_WORLD);
 
   GetOutput() = sorted_data;
 
