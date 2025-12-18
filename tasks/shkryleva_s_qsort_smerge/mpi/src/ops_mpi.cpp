@@ -23,6 +23,7 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
   return true;
 }
+
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank, size;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -32,13 +33,10 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   if (rank == 0) {
     n = static_cast<int>(GetInput().size());
   }
-
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (n == 0) {
-    if (rank == 0) {
-      GetOutput() = std::vector<int>();
-    }
+    GetOutput() = std::vector<int>();
     MPI_Barrier(MPI_COMM_WORLD);
     return true;
   }
@@ -47,7 +45,6 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   if (rank == 0) {
     all_data = GetInput();
   }
-
   MPI_Bcast(all_data.data(), n, MPI_INT, 0, MPI_COMM_WORLD);
 
   std::vector<int> counts(size), displs(size);
@@ -58,7 +55,9 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     std::copy(all_data.begin() + displs[rank], all_data.begin() + displs[rank] + counts[rank], local_data.begin());
   }
 
-  std::sort(local_data.begin(), local_data.end());
+  if (counts[rank] > 0) {
+    std::sort(local_data.begin(), local_data.end());
+  }
 
   std::vector<int> gathered_data;
   if (rank == 0) {
@@ -68,35 +67,37 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Gatherv(local_data.data(), counts[rank], MPI_INT, (rank == 0) ? gathered_data.data() : nullptr, counts.data(),
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
+  std::vector<int> sorted_data;
   if (rank == 0) {
-    std::vector<int> result;
-
     if (size == 1) {
-      result = gathered_data;
+      sorted_data = gathered_data;
     } else {
-      int first_non_empty = 0;
-      while (first_non_empty < size && counts[first_non_empty] == 0) {
-        first_non_empty++;
-      }
+      sorted_data.assign(gathered_data.begin(), gathered_data.begin() + counts[0]);
 
-      if (first_non_empty < size) {
-        int start = displs[first_non_empty];
-        int end = start + counts[first_non_empty];
-        result.assign(gathered_data.begin() + start, gathered_data.begin() + end);
-
-        for (int i = first_non_empty + 1; i < size; ++i) {
-          if (counts[i] > 0) {
-            int part_start = displs[i];
-            int part_end = part_start + counts[i];
-            std::vector<int> part(gathered_data.begin() + part_start, gathered_data.begin() + part_end);
-            result = Merge(result, part);
-          }
+      for (int i = 1; i < size; ++i) {
+        if (counts[i] > 0) {
+          std::vector<int> part(gathered_data.begin() + displs[i], gathered_data.begin() + displs[i] + counts[i]);
+          std::vector<int> merged(sorted_data.size() + part.size());
+          std::merge(sorted_data.begin(), sorted_data.end(), part.begin(), part.end(), merged.begin());
+          sorted_data = std::move(merged);
         }
       }
     }
-
-    GetOutput() = result;
   }
+
+  int sorted_size = 0;
+  if (rank == 0) {
+    sorted_size = static_cast<int>(sorted_data.size());
+  }
+  MPI_Bcast(&sorted_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (rank != 0) {
+    sorted_data.resize(sorted_size);
+  }
+
+  MPI_Bcast(sorted_data.data(), sorted_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+  GetOutput() = sorted_data;
 
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
