@@ -100,27 +100,27 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               MPI_COMM_WORLD);
 
   if (rank == 0) {
-    std::vector<int> sorted_data;
-
-    int first_proc_with_data = 0;
-    while (first_proc_with_data < size && counts[first_proc_with_data] == 0) {
-      first_proc_with_data++;
-    }
-
-    if (first_proc_with_data < size) {
-      sorted_data =
-          std::vector<int>(gathered_data.begin() + displs[first_proc_with_data],
-                           gathered_data.begin() + displs[first_proc_with_data] + counts[first_proc_with_data]);
-
-      for (int i = first_proc_with_data + 1; i < size; ++i) {
-        if (counts[i] > 0) {
-          std::vector<int> part(gathered_data.begin() + displs[i], gathered_data.begin() + displs[i] + counts[i]);
-          sorted_data = Merge(sorted_data, part);
-        }
+    std::vector<std::vector<int>> parts;
+    for (int i = 0; i < size; ++i) {
+      if (counts[i] > 0) {
+        std::vector<int> part(gathered_data.begin() + displs[i], gathered_data.begin() + displs[i] + counts[i]);
+        parts.push_back(part);
       }
     }
 
-    GetOutput() = sorted_data;
+    if (!parts.empty()) {
+      std::vector<int> sorted_data = parts[0];
+
+      for (size_t i = 1; i < parts.size(); ++i) {
+        std::vector<int> merged(sorted_data.size() + parts[i].size());
+        std::merge(sorted_data.begin(), sorted_data.end(), parts[i].begin(), parts[i].end(), merged.begin());
+        sorted_data = std::move(merged);
+      }
+
+      GetOutput() = sorted_data;
+    } else {
+      GetOutput() = std::vector<int>();
+    }
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
