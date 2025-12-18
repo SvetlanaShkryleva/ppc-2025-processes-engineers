@@ -84,37 +84,9 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    if (size == 1) {
-      GetOutput() = gathered_data;
-    } else {
-      std::vector<int> sorted_data;
-      int first_non_empty = 0;
-
-      while (first_non_empty < size && counts[first_non_empty] == 0) {
-        first_non_empty++;
-      }
-
-      if (first_non_empty < size) {
-        int start = displs[first_non_empty];
-        int end = start + counts[first_non_empty];
-        sorted_data.assign(gathered_data.begin() + start, gathered_data.begin() + end);
-
-        for (int i = first_non_empty + 1; i < size; ++i) {
-          if (counts[i] > 0) {
-            int part_start = displs[i];
-            int part_end = part_start + counts[i];
-            std::vector<int> part(gathered_data.begin() + part_start, gathered_data.begin() + part_end);
-
-            std::vector<int> merged;
-            merged.reserve(sorted_data.size() + part.size());
-            std::merge(sorted_data.begin(), sorted_data.end(), part.begin(), part.end(), std::back_inserter(merged));
-            sorted_data = std::move(merged);
-          }
-        }
-      }
-
-      GetOutput() = sorted_data;
-    }
+    std::vector<int> final_sorted = gathered_data;
+    std::sort(final_sorted.begin(), final_sorted.end());
+    GetOutput() = final_sorted;
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
