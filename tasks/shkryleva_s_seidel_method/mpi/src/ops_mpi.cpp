@@ -78,7 +78,12 @@ bool ShkrylevaSSeidelMethodMPI::RunImpl() {
   const double epsilon = 1e-6;
   const int max_iterations = 10000;
 
-  SolveIteratively(local_rows, start_row, n, local_matrix, local_b, x, row_counts, row_displs, epsilon, max_iterations);
+  bool converged = SolveIteratively(local_rows, start_row, n, local_matrix, local_b, x, row_counts, row_displs, epsilon,
+                                    max_iterations);
+
+  if (!converged) {
+    return false;
+  }
 
   if (rank == 0) {
     double sum = 0.0;
