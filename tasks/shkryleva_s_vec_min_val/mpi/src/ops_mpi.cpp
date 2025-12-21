@@ -17,7 +17,7 @@ namespace {
 struct DistributionInfo {
   std::vector<int> sendcounts;
   std::vector<int> displacements;
-  int local_count;
+  int local_count = 0;
 };
 
 DistributionInfo CalculateDistribution(int total_size, int world_size) {
