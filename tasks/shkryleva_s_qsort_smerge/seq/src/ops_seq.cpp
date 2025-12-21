@@ -21,38 +21,28 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   return true;
 }
 
+// Реализация быстрой сортировки с использованием итераторов
+template <typename RandomIt>
+void quick_sort_impl(RandomIt first, RandomIt last) {
+  if (first == last || std::next(first) == last) {
+    return;
+  }
+
+  auto pivot = *std::next(first, std::distance(first, last) / 2);
+  RandomIt middle1 = std::partition(first, last, [pivot](const auto &em) { return em < pivot; });
+  RandomIt middle2 = std::partition(middle1, last, [pivot](const auto &em) { return !(pivot < em); });
+
+  quick_sort_impl(first, middle1);
+  quick_sort_impl(middle2, last);
+}
+
 std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<int> &arr) {
-  if (arr.size() <= 1) {
+  if (arr.empty()) {
     return arr;
   }
 
-  int pivot = arr[arr.size() / 2];
-
-  std::vector<int> less, equal, greater;
-  less.reserve(arr.size());
-  greater.reserve(arr.size());
-  equal.reserve(arr.size() / 3);
-
-  for (const auto &elem : arr) {
-    if (elem < pivot) {
-      less.push_back(elem);
-    } else if (elem > pivot) {
-      greater.push_back(elem);
-    } else {
-      equal.push_back(elem);
-    }
-  }
-
-  std::vector<int> sorted_less = QuickSortWithMerge(less);
-  std::vector<int> sorted_greater = QuickSortWithMerge(greater);
-
-  std::vector<int> result;
-  result.reserve(sorted_less.size() + equal.size() + sorted_greater.size());
-
-  result.insert(result.end(), sorted_less.begin(), sorted_less.end());
-  result.insert(result.end(), equal.begin(), equal.end());
-  result.insert(result.end(), sorted_greater.begin(), sorted_greater.end());
-
+  std::vector<int> result = arr;
+  quick_sort_impl(result.begin(), result.end());
   return result;
 }
 
@@ -63,18 +53,8 @@ bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
   }
 
   std::vector<int> sorted = QuickSortWithMerge(GetInput());
-
-#ifdef NDEBUG
-  for (size_t i = 1; i < sorted.size(); i++) {
-    if (sorted[i] < sorted[i - 1]) {
-      sorted = GetInput();
-      std::sort(sorted.begin(), sorted.end());
-      break;
-    }
-  }
-#endif
-
   GetOutput() = sorted;
+
   return true;
 }
 
