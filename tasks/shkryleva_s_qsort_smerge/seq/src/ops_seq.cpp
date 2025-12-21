@@ -21,19 +21,30 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   return true;
 }
 
-// Реализация быстрой сортировки с использованием итераторов
-template <typename RandomIt>
-void quick_sort_impl(RandomIt first, RandomIt last) {
-  if (first == last || std::next(first) == last) {
+void quick_sort_impl(std::vector<int> &arr, int left, int right) {
+  if (left >= right) {
     return;
   }
 
-  auto pivot = *std::next(first, std::distance(first, last) / 2);
-  RandomIt middle1 = std::partition(first, last, [pivot](const auto &em) { return em < pivot; });
-  RandomIt middle2 = std::partition(middle1, last, [pivot](const auto &em) { return !(pivot < em); });
+  int pivot = arr[left + (right - left) / 2];
+  int i = left, j = right;
 
-  quick_sort_impl(first, middle1);
-  quick_sort_impl(middle2, last);
+  while (i <= j) {
+    while (arr[i] < pivot) {
+      i++;
+    }
+    while (arr[j] > pivot) {
+      j--;
+    }
+    if (i <= j) {
+      std::swap(arr[i], arr[j]);
+      i++;
+      j--;
+    }
+  }
+
+  quick_sort_impl(arr, left, j);
+  quick_sort_impl(arr, i, right);
 }
 
 std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<int> &arr) {
@@ -42,7 +53,7 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<
   }
 
   std::vector<int> result = arr;
-  quick_sort_impl(result.begin(), result.end());
+  quick_sort_impl(result, 0, static_cast<int>(result.size()) - 1);
   return result;
 }
 
@@ -53,8 +64,8 @@ bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
   }
 
   std::vector<int> sorted = QuickSortWithMerge(GetInput());
-  GetOutput() = sorted;
 
+  GetOutput() = sorted;
   return true;
 }
 
