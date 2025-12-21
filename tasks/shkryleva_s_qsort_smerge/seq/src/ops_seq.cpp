@@ -1,6 +1,6 @@
 #include "shkryleva_s_qsort_smerge/seq/include/ops_seq.hpp"
 
-#include <span>
+#include <algorithm>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
@@ -14,67 +14,41 @@ ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &in) {
 }
 
 bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
-  return GetOutput().empty();
+  return true;
 }
 
 bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   return true;
 }
 
-std::vector<int> ShkrylevaSQSortSMergeSEQ::Merge(const std::vector<int> &left, const std::vector<int> &right) {
-  std::vector<int> result;
-  result.reserve(left.size() + right.size());
-
-  size_t i = 0;
-  size_t j = 0;
-
-  while (i < left.size() && j < right.size()) {
-    if (left[i] < right[j]) {
-      result.push_back(left[i++]);
-    } else {
-      result.push_back(right[j++]);
-    }
-  }
-
-  result.insert(result.end(), left.begin() + i, left.end());
-  result.insert(result.end(), right.begin() + j, right.end());
-
-  return result;
-}
-std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::span<int> &arr) {
+std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSort(const std::vector<int> &arr) {
   if (arr.size() <= 1) {
-    std::vector<int> res;
-    res.assign(arr.begin(), arr.end());
-    return res;
+    return arr;
   }
 
   int pivot = arr[arr.size() / 2];
 
-  std::vector<int> left, right, equal;
-
-  left.reserve(arr.size());
-  right.reserve(arr.size());
-  equal.reserve(arr.size());
+  std::vector<int> less, equal, greater;
 
   for (const auto &elem : arr) {
     if (elem < pivot) {
-      left.push_back(elem);
+      less.push_back(elem);
     } else if (elem > pivot) {
-      right.push_back(elem);
+      greater.push_back(elem);
     } else {
       equal.push_back(elem);
     }
   }
 
-  std::vector<int> sortedLeft = QuickSortWithMerge(left);
-  std::vector<int> sortedRight = QuickSortWithMerge(right);
+  std::vector<int> sorted_less = QuickSort(less);
+  std::vector<int> sorted_greater = QuickSort(greater);
 
   std::vector<int> result;
-  result.reserve(sortedLeft.size() + equal.size() + sortedRight.size());
+  result.reserve(sorted_less.size() + equal.size() + sorted_greater.size());
 
-  result.insert(result.end(), sortedLeft.begin(), sortedLeft.end());
+  result.insert(result.end(), sorted_less.begin(), sorted_less.end());
   result.insert(result.end(), equal.begin(), equal.end());
-  result.insert(result.end(), sortedRight.begin(), sortedRight.end());
+  result.insert(result.end(), sorted_greater.begin(), sorted_greater.end());
 
   return result;
 }
@@ -85,9 +59,17 @@ bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
     return true;
   }
 
-  std::vector<int> sorted = QuickSortWithMerge(GetInput());
-  GetOutput() = sorted;
+  std::vector<int> sorted = QuickSort(GetInput());
 
+  for (size_t i = 1; i < sorted.size(); i++) {
+    if (sorted[i] < sorted[i - 1]) {
+      sorted = GetInput();
+      std::sort(sorted.begin(), sorted.end());
+      break;
+    }
+  }
+
+  GetOutput() = sorted;
   return true;
 }
 

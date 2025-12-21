@@ -1,6 +1,5 @@
 #pragma once
 
-#include <span>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
@@ -21,8 +20,7 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  static std::vector<int> Merge(const std::vector<int> &left, const std::vector<int> &right);
-  std::vector<int> QuickSortWithMerge(const std::span<int> &arr);
+  static std::vector<int> QuickSort(const std::vector<int> &arr);
 };
 
 }  // namespace shkryleva_s_qsort_smerge

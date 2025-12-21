@@ -21,8 +21,11 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
   bool PostProcessingImpl() override;
 
   static void ComputeDistribution(int n, int size, std::vector<int> &counts, std::vector<int> &displs);
-  static std::vector<int> Merge(const std::vector<int> &left, const std::vector<int> &right);
-  static std::vector<int> QuickSortWithMerge(const std::vector<int> &arr);
+
+  static std::vector<int> MergeTwoSortedVectors(const std::vector<int> &a, const std::vector<int> &b);
+
+  static void MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts, const std::vector<int> &displs,
+                               int size);
 };
 
 }  // namespace shkryleva_s_qsort_smerge
