@@ -20,7 +20,7 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  static std::vector<int> QuickSort(const std::vector<int> &arr);
+  std::vector<int> QuickSortWithMerge(const std::vector<int> &arr);
 };
 
 }  // namespace shkryleva_s_qsort_smerge

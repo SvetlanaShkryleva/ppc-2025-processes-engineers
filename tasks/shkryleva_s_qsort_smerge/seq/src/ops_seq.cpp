@@ -21,7 +21,7 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   return true;
 }
 
-std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSort(const std::vector<int> &arr) {
+std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<int> &arr) {
   if (arr.size() <= 1) {
     return arr;
   }
@@ -29,6 +29,9 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSort(const std::vector<int> &arr
   int pivot = arr[arr.size() / 2];
 
   std::vector<int> less, equal, greater;
+  less.reserve(arr.size());
+  greater.reserve(arr.size());
+  equal.reserve(arr.size() / 3);
 
   for (const auto &elem : arr) {
     if (elem < pivot) {
@@ -40,8 +43,8 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSort(const std::vector<int> &arr
     }
   }
 
-  std::vector<int> sorted_less = QuickSort(less);
-  std::vector<int> sorted_greater = QuickSort(greater);
+  std::vector<int> sorted_less = QuickSortWithMerge(less);
+  std::vector<int> sorted_greater = QuickSortWithMerge(greater);
 
   std::vector<int> result;
   result.reserve(sorted_less.size() + equal.size() + sorted_greater.size());
@@ -59,8 +62,9 @@ bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
     return true;
   }
 
-  std::vector<int> sorted = QuickSort(GetInput());
+  std::vector<int> sorted = QuickSortWithMerge(GetInput());
 
+#ifdef NDEBUG
   for (size_t i = 1; i < sorted.size(); i++) {
     if (sorted[i] < sorted[i - 1]) {
       sorted = GetInput();
@@ -68,6 +72,7 @@ bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
       break;
     }
   }
+#endif
 
   GetOutput() = sorted;
   return true;
