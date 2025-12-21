@@ -21,7 +21,7 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   return true;
 }
 
-void quick_sort_impl(std::vector<int> &arr, int left, int right) {
+static void quick_sort_impl(std::vector<int> &arr, int left, int right) {
   if (left >= right) {
     return;
   }
