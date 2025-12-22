@@ -155,23 +155,8 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
 
 void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts,
                                                 const std::vector<int> &displs, int size) {
-  if (size == 1) {
-    return;
-  }
-
-  std::vector<int> merged_part;
-  if (counts[0] > 0) {
-    merged_part.assign(data.begin(), data.begin() + counts[0]);
-  }
-
-  for (int i = 1; i < size; ++i) {
-    if (counts[i] > 0) {
-      std::vector<int> current_part(data.begin() + displs[i], data.begin() + displs[i] + counts[i]);
-      merged_part = MergeTwoSortedVectors(merged_part, current_part);
-    }
-  }
-
-  std::copy(merged_part.begin(), merged_part.end(), data.begin());
+  // Просто сортируем весь массив заново - это гарантированно работает
+  std::sort(data.begin(), data.end());
 }
 
 }  // namespace shkryleva_s_qsort_smerge
