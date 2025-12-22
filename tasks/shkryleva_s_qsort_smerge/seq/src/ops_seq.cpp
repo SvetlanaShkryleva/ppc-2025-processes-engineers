@@ -21,39 +21,38 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   return true;
 }
 
-static void quick_sort_impl(std::vector<int> &arr, int left, int right) {
-  if (left >= right) {
-    return;
-  }
-
-  int pivot = arr[left + (right - left) / 2];
-  int i = left, j = right;
-
-  while (i <= j) {
-    while (arr[i] < pivot) {
-      i++;
-    }
-    while (arr[j] > pivot) {
-      j--;
-    }
-    if (i <= j) {
-      std::swap(arr[i], arr[j]);
-      i++;
-      j--;
-    }
-  }
-
-  quick_sort_impl(arr, left, j);
-  quick_sort_impl(arr, i, right);
-}
-
 std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<int> &arr) {
-  if (arr.empty()) {
+  if (arr.size() <= 1) {
     return arr;
   }
 
   std::vector<int> result = arr;
-  quick_sort_impl(result, 0, static_cast<int>(result.size()) - 1);
+
+  std::function<void(int, int)> quick_sort = [&](int low, int high) {
+    if (low < high) {
+      int pivot = result[(low + high) / 2];
+      int i = low, j = high;
+
+      while (i <= j) {
+        while (result[i] < pivot) {
+          i++;
+        }
+        while (result[j] > pivot) {
+          j--;
+        }
+        if (i <= j) {
+          std::swap(result[i], result[j]);
+          i++;
+          j--;
+        }
+      }
+
+      quick_sort(low, j);
+      quick_sort(i, high);
+    }
+  };
+
+  quick_sort(0, static_cast<int>(result.size()) - 1);
   return result;
 }
 
@@ -64,8 +63,8 @@ bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
   }
 
   std::vector<int> sorted = QuickSortWithMerge(GetInput());
-
   GetOutput() = sorted;
+
   return true;
 }
 
