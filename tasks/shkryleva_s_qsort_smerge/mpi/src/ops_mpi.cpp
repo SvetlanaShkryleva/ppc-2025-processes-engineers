@@ -155,6 +155,11 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
 
 void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts,
                                                 const std::vector<int> &displs, int size) {
+  // Используем параметры, чтобы избежать предупреждений компилятора
+  (void)counts;
+  (void)displs;
+  (void)size;
+
   // Просто сортируем весь массив заново - это гарантированно работает
   std::sort(data.begin(), data.end());
 }
