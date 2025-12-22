@@ -33,12 +33,13 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<
 
   std::vector<int> result;
   result.reserve(arr.size());
-
   for (int value : arr) {
     result.push_back(value);
   }
 
-  std::function<void(int, int)> quick_sort = [&result](int left, int right) {
+  std::function<void(int, int)> quick_sort;
+
+  quick_sort = [&result, &quick_sort](int left, int right) {
     if (left >= right) {
       return;
     }
@@ -72,12 +73,8 @@ std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<
       }
     }
 
-    if (left < j) {
-      quick_sort(left, j);
-    }
-    if (i < right) {
-      quick_sort(i, right);
-    }
+    quick_sort(left, j);
+    quick_sort(i, right);
   };
 
   quick_sort(0, static_cast<int>(result.size()) - 1);
