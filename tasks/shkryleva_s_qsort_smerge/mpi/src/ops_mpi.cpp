@@ -39,7 +39,6 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   if (n == 0) {
     GetOutput() = std::vector<int>();
-    MPI_Barrier(MPI_COMM_WORLD);
     return true;
   }
 
@@ -76,7 +75,8 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     sorted_data.resize(n);
 
     if (counts[0] > 0) {
-      std::copy(local_data.begin(), local_data.begin() + counts[0], sorted_data.begin());
+      std::copy(local_data.begin(), local_data.begin() + counts[0],
+                sorted_data.begin() + displs[0]);  // <-- ИСПРАВЛЕНО!
     }
 
     for (int i = 1; i < size; ++i) {
@@ -86,17 +86,17 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     }
 
     MergeSortedParts(sorted_data, counts, displs, size);
+    GetOutput() = sorted_data;
   } else {
     if (counts[rank] > 0) {
       MPI_Send(local_data.data(), counts[rank], MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
   }
 
+  int output_size = 0;
   if (rank == 0) {
-    GetOutput() = sorted_data;
+    output_size = static_cast<int>(GetOutput().size());
   }
-
-  int output_size = static_cast<int>(GetOutput().size());
   MPI_Bcast(&output_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank != 0) {
@@ -105,7 +105,6 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   MPI_Bcast(GetOutput().data(), output_size, MPI_INT, 0, MPI_COMM_WORLD);
 
-  MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
 
@@ -155,13 +154,41 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
 
 void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts,
                                                 const std::vector<int> &displs, int size) {
-  // Используем параметры, чтобы избежать предупреждений компилятора
-  (void)counts;
-  (void)displs;
-  (void)size;
+  if (size == 1) {
+    return;
+  }
 
-  // Просто сортируем весь массив заново - это гарантированно работает
-  std::sort(data.begin(), data.end());
+  int first_non_empty = 0;
+  while (first_non_empty < size && counts[first_non_empty] == 0) {
+    first_non_empty++;
+  }
+
+  if (first_non_empty >= size) {
+    return;
+  }
+
+  std::vector<int> merged_part;
+  merged_part.assign(data.begin() + displs[first_non_empty],
+                     data.begin() + displs[first_non_empty] + counts[first_non_empty]);
+
+  for (int i = first_non_empty + 1; i < size; ++i) {
+    if (counts[i] > 0) {
+      std::vector<int> current_part(data.begin() + displs[i], data.begin() + displs[i] + counts[i]);
+      merged_part = MergeTwoSortedVectors(merged_part, current_part);
+    }
+  }
+
+  int total_elements = 0;
+  for (int i = 0; i < size; ++i) {
+    total_elements += counts[i];
+  }
+
+  if (merged_part.size() != static_cast<size_t>(total_elements)) {
+    std::sort(data.begin(), data.end());
+    return;
+  }
+
+  std::copy(merged_part.begin(), merged_part.end(), data.begin());
 }
 
 }  // namespace shkryleva_s_qsort_smerge
