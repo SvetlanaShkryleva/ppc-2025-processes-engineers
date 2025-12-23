@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <numeric>
 #include <random>
 #include <vector>
 
@@ -15,7 +14,6 @@ namespace shkryleva_s_qsort_smerge {
 class ShkrylevaSQSortSMergePerfTests : public ppc::util::BaseRunPerfTests<InType, OutType> {
  private:
   const int kCount_ = 1000;
-  InType input_data_{};
 
  protected:
   void SetUp() override {
@@ -35,15 +33,15 @@ class ShkrylevaSQSortSMergePerfTests : public ppc::util::BaseRunPerfTests<InType
       return false;
     }
 
-    if (!std::is_sorted(output_data.begin(), output_data.end())) {
+    if (!std::ranges::is_sorted(output_data)) {
       return false;
     }
 
     std::vector<int> input_copy = input_data_;
     std::vector<int> output_copy = output_data;
 
-    std::sort(input_copy.begin(), input_copy.end());
-    std::sort(output_copy.begin(), output_copy.end());
+    std::ranges::sort(input_copy);
+    std::ranges::sort(output_copy);
 
     return input_copy == output_copy;
   }
@@ -51,6 +49,9 @@ class ShkrylevaSQSortSMergePerfTests : public ppc::util::BaseRunPerfTests<InType
   InType GetTestInputData() override {
     return input_data_;
   }
+
+ private:
+  InType input_data_;
 };
 
 TEST_P(ShkrylevaSQSortSMergePerfTests, QSortSMergeTest) {

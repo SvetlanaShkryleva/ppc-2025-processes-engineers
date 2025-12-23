@@ -24,6 +24,9 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
 
   static std::vector<int> MergeTwoSortedVectors(const std::vector<int> &a, const std::vector<int> &b);
 
+  static bool CheckPartsSorted(const std::vector<int> &data, const std::vector<int> &counts,
+                               const std::vector<int> &displs, int size);
+
   static void MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts, const std::vector<int> &displs,
                                int size);
 };

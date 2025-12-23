@@ -39,8 +39,8 @@ class ShkrylevaSQSortSMergeFuncTests : public ppc::util::BaseRunFuncTests<InType
 
     std::vector<int> input_copy = input_data_;
     std::vector<int> output_copy = output_data;
-    std::sort(input_copy.begin(), input_copy.end());
-    std::sort(output_copy.begin(), output_copy.end());
+    std::ranges::sort(input_copy);
+    std::ranges::sort(output_copy);
 
     return input_copy == output_copy;
   }

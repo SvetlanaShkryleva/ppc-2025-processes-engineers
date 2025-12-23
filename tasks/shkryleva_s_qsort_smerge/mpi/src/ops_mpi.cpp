@@ -3,6 +3,7 @@
 #include <mpi.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
@@ -50,7 +51,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
                counts[rank], MPI_INT, 0, MPI_COMM_WORLD);
 
   if (!local_data.empty()) {
-    std::sort(local_data.begin(), local_data.end());
+    std::ranges::sort(local_data);
   }
 
   std::vector<int> gathered_data;
@@ -62,18 +63,12 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    for (int i = 0; i < size; ++i) {
-      if (counts[i] > 0) {
-        for (int j = displs[i] + 1; j < displs[i] + counts[i]; ++j) {
-          if (gathered_data[j] < gathered_data[j - 1]) {
-            std::sort(gathered_data.begin(), gathered_data.end());
-            break;
-          }
-        }
-      }
+    if (CheckPartsSorted(gathered_data, counts, displs, size)) {
+      MergeSortedParts(gathered_data, counts, displs, size);
+    } else {
+      std::ranges::sort(gathered_data);
     }
 
-    MergeSortedParts(gathered_data, counts, displs, size);
     GetOutput() = gathered_data;
   }
 
@@ -116,7 +111,8 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
   std::vector<int> result;
   result.reserve(a.size() + b.size());
 
-  size_t i = 0, j = 0;
+  size_t i = 0;
+  size_t j = 0;
   while (i < a.size() && j < b.size()) {
     if (a[i] <= b[j]) {
       result.push_back(a[i++]);
@@ -134,6 +130,20 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
   }
 
   return result;
+}
+
+bool ShkrylevaSQSortSMergeMPI::CheckPartsSorted(const std::vector<int> &data, const std::vector<int> &counts,
+                                                const std::vector<int> &displs, int size) {
+  for (int i = 0; i < size; ++i) {
+    if (counts[i] > 0) {
+      for (int j = displs[i] + 1; j < displs[i] + counts[i]; ++j) {
+        if (data[j] < data[j - 1]) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
 }
 
 void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts,
@@ -170,11 +180,11 @@ void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const st
   }
 
   if (merged.size() != static_cast<size_t>(total_elements)) {
-    std::sort(data.begin(), data.end());
+    std::ranges::sort(data);
     return;
   }
 
-  std::copy(merged.begin(), merged.end(), data.begin());
+  std::ranges::copy(merged, data.begin());
 }
 
 }  // namespace shkryleva_s_qsort_smerge
