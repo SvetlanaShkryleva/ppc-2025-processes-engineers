@@ -1,28 +1,14 @@
 #include "shkryleva_s_qsort_smerge/seq/include/ops_seq.hpp"
 
 #include <algorithm>
-#include <functional>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
 
 namespace shkryleva_s_qsort_smerge {
 
-ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &in) {
-  SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
-  GetOutput() = std::vector<int>();
-}
-
-bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
-  return true;
-}
-
-bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
-  return true;
-}
-
-static void QuickSortHelper(std::vector<int> &arr, int left, int right) {
+namespace {
+void QuickSortHelper(std::vector<int> &arr, int left, int right) {
   if (left >= right) {
     return;
   }
@@ -59,6 +45,21 @@ static void QuickSortHelper(std::vector<int> &arr, int left, int right) {
 
   QuickSortHelper(arr, left, j);
   QuickSortHelper(arr, i, right);
+}
+}  // namespace
+
+ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &in) {
+  SetTypeOfTask(GetStaticTypeOfTask());
+  GetInput() = in;
+  GetOutput() = std::vector<int>();
+}
+
+bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
+  return true;
+}
+
+bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
+  return true;
 }
 
 std::vector<int> ShkrylevaSQSortSMergeSEQ::QuickSortWithMerge(const std::vector<int> &arr) {
