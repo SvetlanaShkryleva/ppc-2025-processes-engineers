@@ -49,10 +49,11 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   std::vector<int> local_data(counts[rank]);
 
   if (rank == 0) {
-    MPI_Scatterv(GetInput().data(), counts.data(), displs.data(), MPI_INT, MPI_IN_PLACE, 0, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(GetInput().data(), counts.data(), displs.data(), MPI_INT,
+                 MPI_IN_PLACE, 0, MPI_INT, 0, MPI_COMM_WORLD);
   } else {
-    MPI_Scatterv(nullptr, counts.data(), displs.data(), MPI_INT, local_data.data(), counts[rank], MPI_INT, 0,
-                 MPI_COMM_WORLD);
+    MPI_Scatterv(nullptr, counts.data(), displs.data(), MPI_INT,
+                 local_data.data(), counts[rank], MPI_INT, 0, MPI_COMM_WORLD);
   }
 
   if (rank == 0) {
@@ -79,8 +80,9 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     }
   }
 
-  MPI_Gatherv(local_data.data(), local_size, MPI_INT, rank == 0 ? gathered_data.data() : nullptr, all_sizes.data(),
-              recv_displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(local_data.data(), local_size, MPI_INT,
+              rank == 0 ? gathered_data.data() : nullptr,
+              all_sizes.data(), recv_displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
     for (int i = 0; i < size; ++i) {
@@ -172,10 +174,13 @@ void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const st
 
   std::vector<std::vector<int>> parts;
   std::vector<int> valid_displs;
-
+  
   for (int i = 0; i < size; ++i) {
     if (counts[i] > 0) {
-      parts.push_back(std::vector<int>(data.begin() + displs[i], data.begin() + displs[i] + counts[i]));
+      parts.push_back(std::vector<int>(
+          data.begin() + displs[i],
+          data.begin() + displs[i] + counts[i]
+      ));
       valid_displs.push_back(displs[i]);
     }
   }
