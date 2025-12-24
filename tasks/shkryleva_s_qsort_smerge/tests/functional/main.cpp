@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
-#include <ranges>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -40,8 +40,10 @@ class ShkrylevaSQSortSMergeFuncTests : public ppc::util::BaseRunFuncTests<InType
 
     std::vector<int> input_copy = input_data_;
     std::vector<int> output_copy = output_data;
-    std::ranges::sort(input_copy);
-    std::ranges::sort(output_copy);
+    // NOLINTNEXTLINE(modernize-use-ranges)
+    std::sort(input_copy.begin(), input_copy.end());
+    // NOLINTNEXTLINE(modernize-use-ranges)
+    std::sort(output_copy.begin(), output_copy.end());
 
     return input_copy == output_copy;
   }

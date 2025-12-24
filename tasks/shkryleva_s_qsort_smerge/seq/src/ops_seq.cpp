@@ -8,6 +8,7 @@
 namespace shkryleva_s_qsort_smerge {
 
 namespace {
+// NOLINTNEXTLINE(misc-no-recursion)
 void QuickSortHelper(std::vector<int> &arr, int left, int right) {
   if (left >= right) {
     return;
