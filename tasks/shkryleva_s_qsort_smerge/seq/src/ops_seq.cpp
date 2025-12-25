@@ -40,10 +40,7 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
 }
 
 bool ShkrylevaSQSortSMergeSEQ::checkElementRange(const std::vector<int> &data) {
-  const int MIN_VALUE = -1000000;
-  const int MAX_VALUE = 1000000;
-  return std::all_of(data.begin(), data.end(),
-                     [MIN_VALUE, MAX_VALUE](int val) { return val >= MIN_VALUE && val <= MAX_VALUE; });
+  return std::all_of(data.begin(), data.end(), [](int val) { return val >= -1000000 && val <= 1000000; });
 }
 
 bool ShkrylevaSQSortSMergeSEQ::verifyDataCopy() {
