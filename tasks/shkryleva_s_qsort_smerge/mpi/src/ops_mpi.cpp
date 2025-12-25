@@ -173,13 +173,11 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
   MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
-  // Получаем размер данных на процессе 0 и передаем всем процессам
   int totalDataSize = 0;
   if (processRank == 0) {
     totalDataSize = static_cast<int>(GetOutput().size());
   }
 
-  // Важно: все процессы должны знать общий размер данных
   MPI_Bcast(&totalDataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (totalDataSize == 0) {
