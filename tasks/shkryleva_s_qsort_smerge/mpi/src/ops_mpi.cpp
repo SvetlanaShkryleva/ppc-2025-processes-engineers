@@ -66,10 +66,11 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   if (rank == 0) {
     if (CheckPartsSorted(gathered_data, counts, displs, size)) {
       MergeSortedParts(gathered_data, counts, displs, size);
+      final_result = std::move(gathered_data);
     } else {
       std::ranges::sort(gathered_data);
+      final_result = std::move(gathered_data);
     }
-    final_result = std::move(gathered_data);
   }
 
   int output_size = 0;
@@ -78,12 +79,13 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   }
   MPI_Bcast(&output_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  GetOutput().resize(output_size);
+  if (rank != 0) {
+    GetOutput().resize(output_size);
+  } else {
+    GetOutput() = std::move(final_result);
+  }
 
   if (output_size > 0) {
-    if (rank == 0) {
-      GetOutput() = std::move(final_result);
-    }
     MPI_Bcast(GetOutput().data(), output_size, MPI_INT, 0, MPI_COMM_WORLD);
   }
 
