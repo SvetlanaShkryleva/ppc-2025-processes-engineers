@@ -10,7 +10,6 @@
 
 namespace shkryleva_s_qsort_smerge {
 
-// Переносим константы из анонимного namespace в глобальную область видимости класса
 const int MAX_DATA_SIZE = 1000000;
 const int MIN_VALUE = -1000000;
 const int MAX_VALUE = 1000000;
@@ -174,12 +173,20 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
   MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
-  if (GetOutput().empty()) {
+  // Получаем размер данных на процессе 0 и передаем всем процессам
+  int totalDataSize = 0;
+  if (processRank == 0) {
+    totalDataSize = static_cast<int>(GetOutput().size());
+  }
+
+  // Важно: все процессы должны знать общий размер данных
+  MPI_Bcast(&totalDataSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (totalDataSize == 0) {
     MPI_Barrier(MPI_COMM_WORLD);
     return true;
   }
 
-  int totalDataSize = static_cast<int>(GetOutput().size());
   std::vector<int> chunkSizes(processCount);
   std::vector<int> displacementOffsets(processCount);
 
@@ -187,6 +194,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   std::vector<int> localChunk(chunkSizes[processRank]);
 
+  // Важно: если процессу не досталось данных, localChunk будет пустым
   if (processRank == 0) {
     MPI_Scatterv(GetOutput().data(), chunkSizes.data(), displacementOffsets.data(), MPI_INT, localChunk.data(),
                  chunkSizes[processRank], MPI_INT, 0, MPI_COMM_WORLD);
