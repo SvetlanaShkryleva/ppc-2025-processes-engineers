@@ -10,6 +10,11 @@
 
 namespace shkryleva_s_qsort_smerge {
 
+// Переносим константы из анонимного namespace в глобальную область видимости класса
+const int MAX_DATA_SIZE = 1000000;
+const int MIN_VALUE = -1000000;
+const int MAX_VALUE = 1000000;
+
 ShkrylevaSQSortSMergeMPI::ShkrylevaSQSortSMergeMPI(const InType &inputVector) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = inputVector;
@@ -50,10 +55,6 @@ bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
 }
 
 namespace {
-
-const int MAX_DATA_SIZE = 1000000;
-const int MIN_VALUE = -1000000;
-const int MAX_VALUE = 1000000;
 
 void performParallelSort(std::vector<int> &dataArray, int startIndex, int endIndex) {
   if (startIndex >= endIndex) {

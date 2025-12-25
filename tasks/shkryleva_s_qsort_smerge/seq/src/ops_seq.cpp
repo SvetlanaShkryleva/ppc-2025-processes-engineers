@@ -8,6 +8,11 @@
 
 namespace shkryleva_s_qsort_smerge {
 
+// Константы для единообразия с MPI версией
+const int MAX_DATA_SIZE = 1000000;
+const int MIN_VAL = -1000000;
+const int MAX_VAL = 1000000;
+
 ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &inputData) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = inputData;
@@ -18,7 +23,7 @@ bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
   if (!GetOutput().empty()) {
     return false;
   }
-  if (GetInput().size() > 1000000) {
+  if (GetInput().size() > MAX_DATA_SIZE) {
     return false;
   }
   return checkElementRange(GetInput());
@@ -40,7 +45,7 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
 }
 
 bool ShkrylevaSQSortSMergeSEQ::checkElementRange(const std::vector<int> &data) {
-  return std::all_of(data.begin(), data.end(), [](int val) { return val >= -1000000 && val <= 1000000; });
+  return std::all_of(data.begin(), data.end(), [](int val) { return val >= MIN_VAL && val <= MAX_VAL; });
 }
 
 bool ShkrylevaSQSortSMergeSEQ::verifyDataCopy() {
