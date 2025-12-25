@@ -4,101 +4,212 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <numeric>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
 
 namespace shkryleva_s_qsort_smerge {
 
-ShkrylevaSQSortSMergeMPI::ShkrylevaSQSortSMergeMPI(const InType &in) {
+ShkrylevaSQSortSMergeMPI::ShkrylevaSQSortSMergeMPI(const InType &inputVector) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = in;
+  GetInput() = inputVector;
   GetOutput() = std::vector<int>();
 }
 
 bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
+  int processRank = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+
+  if (!GetOutput().empty()) {
+    return false;
+  }
+
+  if (processRank == 0) {
+    if (GetInput().size() > MAX_DATA_SIZE) {
+      return false;
+    }
+    for (const auto &element : GetInput()) {
+      if (element < MIN_VALUE || element > MAX_VALUE) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
+  int processRank = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+
   GetOutput() = GetInput();
+
+  if (processRank == 0) {
+    return verifyDataConsistency();
+  }
+  return true;
+}
+
+namespace {
+
+const int MAX_DATA_SIZE = 1000000;
+const int MIN_VALUE = -1000000;
+const int MAX_VALUE = 1000000;
+
+void performParallelSort(std::vector<int> &dataArray, int startIndex, int endIndex) {
+  if (startIndex >= endIndex) {
+    return;
+  }
+
+  int pivotValue = dataArray[(startIndex + endIndex) / 2];
+  int leftIndex = startIndex;
+  int rightIndex = endIndex;
+
+  while (leftIndex <= rightIndex) {
+    while (dataArray[leftIndex] < pivotValue) {
+      ++leftIndex;
+    }
+    while (dataArray[rightIndex] > pivotValue) {
+      --rightIndex;
+    }
+    if (leftIndex <= rightIndex) {
+      std::swap(dataArray[leftIndex], dataArray[rightIndex]);
+      ++leftIndex;
+      --rightIndex;
+    }
+  }
+
+  performParallelSort(dataArray, startIndex, rightIndex);
+  performParallelSort(dataArray, leftIndex, endIndex);
+}
+
+std::vector<int> combineArrays(const std::vector<int> &firstArray, const std::vector<int> &secondArray) {
+  std::vector<int> combinedResult;
+  combinedResult.reserve(firstArray.size() + secondArray.size());
+
+  size_t idxFirst = 0;
+  size_t idxSecond = 0;
+
+  while (idxFirst < firstArray.size() && idxSecond < secondArray.size()) {
+    if (firstArray[idxFirst] <= secondArray[idxSecond]) {
+      combinedResult.push_back(firstArray[idxFirst]);
+      ++idxFirst;
+    } else {
+      combinedResult.push_back(secondArray[idxSecond]);
+      ++idxSecond;
+    }
+  }
+
+  while (idxFirst < firstArray.size()) {
+    combinedResult.push_back(firstArray[idxFirst]);
+    ++idxFirst;
+  }
+
+  while (idxSecond < secondArray.size()) {
+    combinedResult.push_back(secondArray[idxSecond]);
+    ++idxSecond;
+  }
+
+  return combinedResult;
+}
+
+void distributeDataAcrossProcesses(int dataSize, int processCount, std::vector<int> &sendCounts,
+                                   std::vector<int> &displacements) {
+  int baseChunkSize = dataSize / processCount;
+  int remainder = dataSize % processCount;
+
+  for (int proc = 0; proc < processCount; ++proc) {
+    sendCounts[proc] = baseChunkSize + (proc < remainder ? 1 : 0);
+    displacements[proc] = (proc == 0) ? 0 : displacements[proc - 1] + sendCounts[proc - 1];
+  }
+}
+
+void gatherAndMergeResults(std::vector<int> &globalResult, const std::vector<int> &localData, int processRank,
+                           int processCount, const std::vector<int> &sendCounts) {
+  if (processRank == 0) {
+    globalResult = localData;
+
+    for (int sourceProc = 1; sourceProc < processCount; ++sourceProc) {
+      std::vector<int> receivedData(sendCounts[sourceProc]);
+      MPI_Recv(receivedData.data(), sendCounts[sourceProc], MPI_INT, sourceProc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      globalResult = combineArrays(globalResult, receivedData);
+    }
+
+    for (int destProc = 1; destProc < processCount; ++destProc) {
+      MPI_Send(globalResult.data(), static_cast<int>(globalResult.size()), MPI_INT, destProc, 1, MPI_COMM_WORLD);
+    }
+  } else {
+    MPI_Send(localData.data(), static_cast<int>(localData.size()), MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+    int receivedSize = 0;
+    MPI_Status status;
+    MPI_Probe(0, 1, MPI_COMM_WORLD, &status);
+    MPI_Get_count(&status, MPI_INT, &receivedSize);
+
+    globalResult.resize(receivedSize);
+    MPI_Recv(globalResult.data(), receivedSize, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  }
+}
+
+}  // namespace
+
+bool ShkrylevaSQSortSMergeMPI::verifyDataConsistency() {
+  if (GetOutput().size() != GetInput().size()) {
+    return false;
+  }
+
+  if (!GetOutput().empty()) {
+    for (size_t position = 0; position < GetOutput().size(); ++position) {
+      if (GetOutput()[position] != GetInput()[position]) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
-  int rank = 0;
-  int size = 0;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  int processRank = 0;
+  int processCount = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+  MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
   if (GetOutput().empty()) {
     MPI_Barrier(MPI_COMM_WORLD);
     return true;
   }
 
-  int n = static_cast<int>(GetOutput().size());
+  int totalDataSize = static_cast<int>(GetOutput().size());
+  std::vector<int> chunkSizes(processCount);
+  std::vector<int> displacementOffsets(processCount);
 
-  std::vector<int> counts(size);
-  std::vector<int> displs(size);
-  ComputeDistribution(n, size, counts, displs);
+  distributeDataAcrossProcesses(totalDataSize, processCount, chunkSizes, displacementOffsets);
 
-  std::vector<int> local_data(counts[rank]);
+  std::vector<int> localChunk(chunkSizes[processRank]);
 
-  if (rank == 0) {
-    MPI_Scatterv(GetOutput().data(), counts.data(), displs.data(), MPI_INT, local_data.data(), counts[rank], MPI_INT, 0,
-                 MPI_COMM_WORLD);
+  if (processRank == 0) {
+    MPI_Scatterv(GetOutput().data(), chunkSizes.data(), displacementOffsets.data(), MPI_INT, localChunk.data(),
+                 chunkSizes[processRank], MPI_INT, 0, MPI_COMM_WORLD);
   } else {
-    MPI_Scatterv(nullptr, counts.data(), displs.data(), MPI_INT, local_data.data(), counts[rank], MPI_INT, 0,
-                 MPI_COMM_WORLD);
+    MPI_Scatterv(nullptr, chunkSizes.data(), displacementOffsets.data(), MPI_INT, localChunk.data(),
+                 chunkSizes[processRank], MPI_INT, 0, MPI_COMM_WORLD);
   }
 
-  if (!local_data.empty()) {
-    std::ranges::sort(local_data);
+  if (!localChunk.empty()) {
+    performParallelSort(localChunk, 0, static_cast<int>(localChunk.size()) - 1);
   }
 
-  if (rank == 0) {
-    std::vector<int> result = local_data;
-
-    for (int i = 1; i < size; ++i) {
-      if (counts[i] > 0) {
-        std::vector<int> received_data(counts[i]);
-        MPI_Recv(received_data.data(), counts[i], MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-        result = MergeTwoSortedVectors(result, received_data);
-      }
-    }
-
-    GetOutput() = std::move(result);
-
-    for (int i = 1; i < size; ++i) {
-      MPI_Send(GetOutput().data(), static_cast<int>(GetOutput().size()), MPI_INT, i, 1, MPI_COMM_WORLD);
-    }
-  } else {
-    if (!local_data.empty()) {
-      MPI_Send(local_data.data(), static_cast<int>(local_data.size()), MPI_INT, 0, 0, MPI_COMM_WORLD);
-    }
-
-    int recv_size = 0;
-    MPI_Status status;
-
-    MPI_Probe(0, 1, MPI_COMM_WORLD, &status);
-    MPI_Get_count(&status, MPI_INT, &recv_size);
-
-    GetOutput().resize(recv_size);
-    MPI_Recv(GetOutput().data(), recv_size, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-  }
+  gatherAndMergeResults(GetOutput(), localChunk, processRank, processCount, chunkSizes);
 
   MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
 
-bool ShkrylevaSQSortSMergeMPI::PostProcessingImpl() {
+bool ShkrylevaSQSortSMergeMPI::validateSortedData() {
   if (GetOutput().empty()) {
     return GetInput().empty();
   }
 
-  if (!std::ranges::is_sorted(GetOutput())) {
+  if (!std::is_sorted(GetOutput().begin(), GetOutput().end())) {
     return false;
   }
 
@@ -106,52 +217,28 @@ bool ShkrylevaSQSortSMergeMPI::PostProcessingImpl() {
     return false;
   }
 
-  int sum_input = std::accumulate(GetInput().begin(), GetInput().end(), 0);
-  int sum_output = std::accumulate(GetOutput().begin(), GetOutput().end(), 0);
+  int inputSum = 0;
+  int outputSum = 0;
 
-  return sum_input == sum_output;
+  for (const auto &element : GetInput()) {
+    inputSum += element;
+  }
+
+  for (const auto &element : GetOutput()) {
+    outputSum += element;
+  }
+
+  return inputSum == outputSum;
 }
 
-void ShkrylevaSQSortSMergeMPI::ComputeDistribution(int n, int size, std::vector<int> &counts,
-                                                   std::vector<int> &displs) {
-  counts.assign(size, 0);
-  displs.assign(size, 0);
+bool ShkrylevaSQSortSMergeMPI::PostProcessingImpl() {
+  int processRank = 0;
+  MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
 
-  int base = n / size;
-  int remainder = n % size;
-  int offset = 0;
-
-  for (int i = 0; i < size; ++i) {
-    counts[i] = base + (i < remainder ? 1 : 0);
-    displs[i] = offset;
-    offset += counts[i];
+  if (processRank == 0) {
+    return validateSortedData();
   }
-}
-
-std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vector<int> &a, const std::vector<int> &b) {
-  std::vector<int> result;
-  result.reserve(a.size() + b.size());
-
-  size_t i = 0;
-  size_t j = 0;
-
-  while (i < a.size() && j < b.size()) {
-    if (a[i] <= b[j]) {
-      result.push_back(a[i++]);
-    } else {
-      result.push_back(b[j++]);
-    }
-  }
-
-  while (i < a.size()) {
-    result.push_back(a[i++]);
-  }
-
-  while (j < b.size()) {
-    result.push_back(b[j++]);
-  }
-
-  return result;
+  return true;
 }
 
 }  // namespace shkryleva_s_qsort_smerge

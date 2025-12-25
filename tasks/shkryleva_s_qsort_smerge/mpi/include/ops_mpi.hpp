@@ -12,7 +12,7 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
   static constexpr ppc::task::TypeOfTask GetStaticTypeOfTask() {
     return ppc::task::TypeOfTask::kMPI;
   }
-  explicit ShkrylevaSQSortSMergeMPI(const InType &in);
+  explicit ShkrylevaSQSortSMergeMPI(const InType &inputVector);
 
  private:
   bool ValidationImpl() override;
@@ -20,12 +20,8 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  static void ComputeDistribution(int n, int size, std::vector<int> &counts, std::vector<int> &displs);
-
-  static std::vector<int> MergeTwoSortedVectors(const std::vector<int> &a, const std::vector<int> &b);
-
-  static void MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts, const std::vector<int> &displs,
-                               int size);
+  bool verifyDataConsistency();
+  bool validateSortedData();
 };
 
 }  // namespace shkryleva_s_qsort_smerge

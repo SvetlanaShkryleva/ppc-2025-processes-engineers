@@ -12,7 +12,7 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
   static constexpr ppc::task::TypeOfTask GetStaticTypeOfTask() {
     return ppc::task::TypeOfTask::kSEQ;
   }
-  explicit ShkrylevaSQSortSMergeSEQ(const InType &in);
+  explicit ShkrylevaSQSortSMergeSEQ(const InType &inputData);
 
  private:
   bool ValidationImpl() override;
@@ -20,7 +20,8 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
   bool RunImpl() override;
   bool PostProcessingImpl() override;
 
-  static std::vector<int> QuickSortWithMerge(const std::vector<int> &arr);
+  bool checkElementRange(const std::vector<int> &data);
+  bool verifyDataCopy();
 };
 
 }  // namespace shkryleva_s_qsort_smerge
