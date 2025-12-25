@@ -26,19 +26,24 @@ bool ShkrylevaSQSortSMergeSEQ::ValidationImpl() {
 
 bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
   GetOutput() = GetInput();
-  return verifyDataCopy();
-}
-
-namespace {
-
-bool validateValueRange(int number) {
-  const int MIN_LIMIT = -1000000;
-  const int MAX_LIMIT = 1000000;
-  return number >= MIN_LIMIT && number <= MAX_LIMIT;
+  if (GetOutput().size() != GetInput().size()) {
+    return false;
+  }
+  if (!GetOutput().empty()) {
+    for (size_t i = 0; i < GetOutput().size(); i++) {
+      if (GetOutput()[i] != GetInput()[i]) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 bool ShkrylevaSQSortSMergeSEQ::checkElementRange(const std::vector<int> &data) {
-  return std::all_of(data.begin(), data.end(), validateValueRange);
+  const int MIN_VALUE = -1000000;
+  const int MAX_VALUE = 1000000;
+  return std::all_of(data.begin(), data.end(),
+                     [MIN_VALUE, MAX_VALUE](int val) { return val >= MIN_VALUE && val <= MAX_VALUE; });
 }
 
 bool ShkrylevaSQSortSMergeSEQ::verifyDataCopy() {
@@ -53,7 +58,8 @@ bool ShkrylevaSQSortSMergeSEQ::verifyDataCopy() {
   return true;
 }
 
-// NOLINTNEXTLINE(misc-no-recursion)
+namespace {
+
 void performQuickSort(std::vector<int> &dataArray, int startIdx, int endIdx) {
   if (startIdx >= endIdx) {
     return;
@@ -124,16 +130,7 @@ bool sortArrayParts(std::vector<int> &data) {
   return true;
 }
 
-}  // namespace
-
-bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
-  if (GetOutput().empty()) {
-    return true;
-  }
-  return sortArrayParts(GetOutput());
-}
-
-bool checkDataConsistency(const std::vector<int> &original, const std::vector<int> &processed) {
+bool validateSortedResult(const std::vector<int> &original, const std::vector<int> &processed) {
   if (original.empty()) {
     return processed.empty();
   }
@@ -157,8 +154,17 @@ bool checkDataConsistency(const std::vector<int> &original, const std::vector<in
   return originalSum == processedSum;
 }
 
+}  // namespace
+
+bool ShkrylevaSQSortSMergeSEQ::RunImpl() {
+  if (GetOutput().empty()) {
+    return true;
+  }
+  return sortArrayParts(GetOutput());
+}
+
 bool ShkrylevaSQSortSMergeSEQ::PostProcessingImpl() {
-  return checkDataConsistency(GetInput(), GetOutput());
+  return validateSortedResult(GetInput(), GetOutput());
 }
 
 }  // namespace shkryleva_s_qsort_smerge
