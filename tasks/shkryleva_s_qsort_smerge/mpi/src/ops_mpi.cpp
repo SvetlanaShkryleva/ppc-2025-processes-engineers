@@ -62,6 +62,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Gatherv(local_data.data(), counts[rank], MPI_INT, rank == 0 ? gathered_data.data() : nullptr, counts.data(),
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
+  // ВАЖНО: Проверка результата должна выполняться только в root процессе (ранг 0)
   if (rank == 0) {
     if (CheckPartsSorted(gathered_data, counts, displs, size)) {
       MergeSortedParts(gathered_data, counts, displs, size);
@@ -70,19 +71,10 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     }
 
     GetOutput() = gathered_data;
+  } else {
+    // В ненулевых рангах устанавливаем пустой вывод
+    GetOutput() = std::vector<int>();
   }
-
-  int output_size = 0;
-  if (rank == 0) {
-    output_size = static_cast<int>(GetOutput().size());
-  }
-  MPI_Bcast(&output_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (rank != 0) {
-    GetOutput().resize(output_size);
-  }
-
-  MPI_Bcast(GetOutput().data(), output_size, MPI_INT, 0, MPI_COMM_WORLD);
 
   return true;
 }
