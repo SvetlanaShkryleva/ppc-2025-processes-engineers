@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <numeric>
 #include <vector>
 
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
@@ -21,6 +22,7 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 }
 
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
+  GetOutput() = GetInput();
   return true;
 }
 
@@ -30,16 +32,12 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int n = 0;
-  if (rank == 0) {
-    n = static_cast<int>(GetInput().size());
-  }
-  MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-  if (n == 0) {
-    GetOutput() = std::vector<int>();
+  if (GetOutput().empty()) {
+    MPI_Barrier(MPI_COMM_WORLD);
     return true;
   }
+
+  int n = static_cast<int>(GetOutput().size());
 
   std::vector<int> counts(size);
   std::vector<int> displs(size);
@@ -47,53 +45,71 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   std::vector<int> local_data(counts[rank]);
 
-  MPI_Scatterv(rank == 0 ? GetInput().data() : nullptr, counts.data(), displs.data(), MPI_INT, local_data.data(),
-               counts[rank], MPI_INT, 0, MPI_COMM_WORLD);
+  if (rank == 0) {
+    MPI_Scatterv(GetOutput().data(), counts.data(), displs.data(), MPI_INT, local_data.data(), counts[rank], MPI_INT, 0,
+                 MPI_COMM_WORLD);
+  } else {
+    MPI_Scatterv(nullptr, counts.data(), displs.data(), MPI_INT, local_data.data(), counts[rank], MPI_INT, 0,
+                 MPI_COMM_WORLD);
+  }
 
   if (!local_data.empty()) {
     std::ranges::sort(local_data);
   }
 
-  std::vector<int> gathered_data;
   if (rank == 0) {
-    gathered_data.resize(n);
-  }
+    std::vector<int> result = local_data;
 
-  MPI_Gatherv(local_data.data(), counts[rank], MPI_INT, rank == 0 ? gathered_data.data() : nullptr, counts.data(),
-              displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
+    for (int i = 1; i < size; ++i) {
+      if (counts[i] > 0) {
+        std::vector<int> received_data(counts[i]);
+        MPI_Recv(received_data.data(), counts[i], MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-  std::vector<int> final_result;
-  if (rank == 0) {
-    if (CheckPartsSorted(gathered_data, counts, displs, size)) {
-      MergeSortedParts(gathered_data, counts, displs, size);
-      final_result = std::move(gathered_data);
-    } else {
-      std::ranges::sort(gathered_data);
-      final_result = std::move(gathered_data);
+        result = MergeTwoSortedVectors(result, received_data);
+      }
     }
-  }
 
-  int output_size = 0;
-  if (rank == 0) {
-    output_size = static_cast<int>(final_result.size());
-  }
-  MPI_Bcast(&output_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    GetOutput() = std::move(result);
 
-  if (rank != 0) {
-    GetOutput().resize(output_size);
+    for (int i = 1; i < size; ++i) {
+      MPI_Send(GetOutput().data(), static_cast<int>(GetOutput().size()), MPI_INT, i, 1, MPI_COMM_WORLD);
+    }
   } else {
-    GetOutput() = std::move(final_result);
+    if (!local_data.empty()) {
+      MPI_Send(local_data.data(), static_cast<int>(local_data.size()), MPI_INT, 0, 0, MPI_COMM_WORLD);
+    }
+
+    int recv_size = 0;
+    MPI_Status status;
+
+    MPI_Probe(0, 1, MPI_COMM_WORLD, &status);
+    MPI_Get_count(&status, MPI_INT, &recv_size);
+
+    GetOutput().resize(recv_size);
+    MPI_Recv(GetOutput().data(), recv_size, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
-  if (output_size > 0) {
-    MPI_Bcast(GetOutput().data(), output_size, MPI_INT, 0, MPI_COMM_WORLD);
-  }
-
+  MPI_Barrier(MPI_COMM_WORLD);
   return true;
 }
 
 bool ShkrylevaSQSortSMergeMPI::PostProcessingImpl() {
-  return true;
+  if (GetOutput().empty()) {
+    return GetInput().empty();
+  }
+
+  if (!std::ranges::is_sorted(GetOutput())) {
+    return false;
+  }
+
+  if (GetOutput().size() != GetInput().size()) {
+    return false;
+  }
+
+  int sum_input = std::accumulate(GetInput().begin(), GetInput().end(), 0);
+  int sum_output = std::accumulate(GetOutput().begin(), GetOutput().end(), 0);
+
+  return sum_input == sum_output;
 }
 
 void ShkrylevaSQSortSMergeMPI::ComputeDistribution(int n, int size, std::vector<int> &counts,
@@ -118,6 +134,7 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
 
   size_t i = 0;
   size_t j = 0;
+
   while (i < a.size() && j < b.size()) {
     if (a[i] <= b[j]) {
       result.push_back(a[i++]);
@@ -135,61 +152,6 @@ std::vector<int> ShkrylevaSQSortSMergeMPI::MergeTwoSortedVectors(const std::vect
   }
 
   return result;
-}
-
-bool ShkrylevaSQSortSMergeMPI::CheckPartsSorted(const std::vector<int> &data, const std::vector<int> &counts,
-                                                const std::vector<int> &displs, int size) {
-  for (int i = 0; i < size; ++i) {
-    if (counts[i] > 0) {
-      for (int j = displs[i] + 1; j < displs[i] + counts[i]; ++j) {
-        if (data[j] < data[j - 1]) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-}
-
-void ShkrylevaSQSortSMergeMPI::MergeSortedParts(std::vector<int> &data, const std::vector<int> &counts,
-                                                const std::vector<int> &displs, int size) {
-  if (size == 1) {
-    return;
-  }
-
-  int first_non_empty = 0;
-  while (first_non_empty < size && counts[first_non_empty] == 0) {
-    first_non_empty++;
-  }
-
-  if (first_non_empty >= size) {
-    return;
-  }
-
-  std::vector<int> merged;
-  if (counts[first_non_empty] > 0) {
-    merged.assign(data.begin() + displs[first_non_empty],
-                  data.begin() + displs[first_non_empty] + counts[first_non_empty]);
-  }
-
-  for (int i = first_non_empty + 1; i < size; ++i) {
-    if (counts[i] > 0) {
-      std::vector<int> current_part(data.begin() + displs[i], data.begin() + displs[i] + counts[i]);
-      merged = MergeTwoSortedVectors(merged, current_part);
-    }
-  }
-
-  int total_elements = 0;
-  for (int i = 0; i < size; ++i) {
-    total_elements += counts[i];
-  }
-
-  if (merged.size() != static_cast<size_t>(total_elements)) {
-    std::ranges::sort(data);
-    return;
-  }
-
-  std::ranges::copy(merged, data.begin());
 }
 
 }  // namespace shkryleva_s_qsort_smerge
