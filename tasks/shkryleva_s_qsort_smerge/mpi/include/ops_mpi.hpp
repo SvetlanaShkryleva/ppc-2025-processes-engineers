@@ -12,16 +12,14 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
   static constexpr ppc::task::TypeOfTask GetStaticTypeOfTask() {
     return ppc::task::TypeOfTask::kMPI;
   }
-  explicit ShkrylevaSQSortSMergeMPI(const InType &inputVector);
+
+  explicit ShkrylevaSQSortSMergeMPI(const InType& inputVector);
 
  private:
   bool ValidationImpl() override;
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
-
-  bool verifyDataConsistency();
-  bool validateSortedData();
 };
 
 }  // namespace shkryleva_s_qsort_smerge

@@ -12,16 +12,14 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
   static constexpr ppc::task::TypeOfTask GetStaticTypeOfTask() {
     return ppc::task::TypeOfTask::kSEQ;
   }
-  explicit ShkrylevaSQSortSMergeSEQ(const InType &inputData);
+
+  explicit ShkrylevaSQSortSMergeSEQ(const InType& inputData);
 
  private:
   bool ValidationImpl() override;
   bool PreProcessingImpl() override;
   bool RunImpl() override;
   bool PostProcessingImpl() override;
-
-  bool checkElementRange(const std::vector<int> &data);
-  bool verifyDataCopy();
 };
 
 }  // namespace shkryleva_s_qsort_smerge
