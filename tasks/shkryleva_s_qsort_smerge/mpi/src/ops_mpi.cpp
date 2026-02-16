@@ -72,13 +72,6 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int total_size = static_cast<int>(input.size());
   MPI_Bcast(&total_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  if (total_size == 0) {
-    if (rank == 0) {
-      GetOutput().clear();
-    }
-    return true;
-  }
-
   std::vector<int> sendcounts(size);
   std::vector<int> displs(size);
 
