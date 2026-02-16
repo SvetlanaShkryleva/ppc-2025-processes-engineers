@@ -56,31 +56,8 @@ void quickSort(std::vector<int> &arr, int left, int right) {
   }
 }
 
-std::vector<int> mergeArrays(const std::vector<int> &a, const std::vector<int> &b) {
-  std::vector<int> result;
-  result.reserve(a.size() + b.size());
-
-  size_t i = 0, j = 0;
-
-  while (i < a.size() && j < b.size()) {
-    if (a[i] <= b[j]) {
-      result.push_back(a[i++]);
-    } else {
-      result.push_back(b[j++]);
-    }
-  }
-
-  while (i < a.size()) {
-    result.push_back(a[i++]);
-  }
-  while (j < b.size()) {
-    result.push_back(b[j++]);
-  }
-
-  return result;
-}
-
 }  // namespace
+
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank = 0;
   int size = 0;
@@ -127,15 +104,10 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    std::vector<int> result;
-
-    for (int i = 0; i < size; ++i) {
-      std::vector<int> chunk(gathered.begin() + displs[i], gathered.begin() + displs[i] + sendcounts[i]);
-
-      result = mergeArrays(result, chunk);
+    if (!gathered.empty()) {
+      quickSort(gathered, 0, total_size - 1);
     }
-
-    GetOutput() = result;
+    GetOutput() = gathered;
   }
 
   return true;
