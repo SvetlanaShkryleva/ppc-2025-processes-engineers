@@ -108,9 +108,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
               displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
-    if (!gathered.empty()) {
-      quickSort(gathered, 0, total_size - 1);
-    }
+    std::sort(gathered.begin(), gathered.end());
     GetOutput() = gathered;
   }
 
