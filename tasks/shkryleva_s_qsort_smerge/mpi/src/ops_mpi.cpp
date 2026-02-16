@@ -85,8 +85,8 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   std::vector<int> local(sendcounts[rank]);
 
-  MPI_Scatterv(rank == 0 ? input.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, local.data(),
-               sendcounts[rank], MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Scatterv(rank == 0 ? input.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT,
+               sendcounts[rank] > 0 ? local.data() : nullptr, sendcounts[rank], MPI_INT, 0, MPI_COMM_WORLD);
 
   if (!local.empty()) {
     quickSort(local, 0, static_cast<int>(local.size()) - 1);
@@ -97,8 +97,8 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     gathered.resize(total_size);
   }
 
-  MPI_Gatherv(local.data(), sendcounts[rank], MPI_INT, rank == 0 ? gathered.data() : nullptr, sendcounts.data(),
-              displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(sendcounts[rank] > 0 ? local.data() : nullptr, sendcounts[rank], MPI_INT,
+              rank == 0 ? gathered.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
   if (rank == 0) {
     std::sort(gathered.begin(), gathered.end());
