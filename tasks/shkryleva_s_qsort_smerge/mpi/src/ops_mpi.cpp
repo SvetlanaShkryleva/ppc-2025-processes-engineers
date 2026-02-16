@@ -81,7 +81,6 @@ std::vector<int> mergeArrays(const std::vector<int> &a, const std::vector<int> &
 }
 
 }  // namespace
-
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank = 0;
   int size = 0;
@@ -119,19 +118,24 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
     quickSort(local, 0, static_cast<int>(local.size()) - 1);
   }
 
+  std::vector<int> gathered;
   if (rank == 0) {
-    std::vector<int> result = local;
+    gathered.resize(total_size);
+  }
 
-    for (int i = 1; i < size; ++i) {
-      std::vector<int> recvbuf(sendcounts[i]);
-      MPI_Recv(recvbuf.data(), sendcounts[i], MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  MPI_Gatherv(local.data(), sendcounts[rank], MPI_INT, rank == 0 ? gathered.data() : nullptr, sendcounts.data(),
+              displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
 
-      result = mergeArrays(result, recvbuf);
+  if (rank == 0) {
+    std::vector<int> result;
+
+    for (int i = 0; i < size; ++i) {
+      std::vector<int> chunk(gathered.begin() + displs[i], gathered.begin() + displs[i] + sendcounts[i]);
+
+      result = mergeArrays(result, chunk);
     }
 
     GetOutput() = result;
-  } else {
-    MPI_Send(local.data(), sendcounts[rank], MPI_INT, 0, 0, MPI_COMM_WORLD);
   }
 
   return true;
