@@ -5,12 +5,14 @@
 #include <algorithm>
 #include <vector>
 
+#include "shkryleva_s_qsort_smerge/common/include/common.hpp"
+
 namespace shkryleva_s_qsort_smerge {
 
-ShkrylevaSQSortSMergeMPI::ShkrylevaSQSortSMergeMPI(const InType &inputVector) {
+ShkrylevaSQSortSMergeMPI::ShkrylevaSQSortSMergeMPI(const InType &in) {
   SetTypeOfTask(GetStaticTypeOfTask());
-  GetInput() = inputVector;
-  GetOutput() = {};
+  GetInput() = in;
+  GetOutput() = std::vector<int>();
 }
 
 bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
@@ -18,45 +20,8 @@ bool ShkrylevaSQSortSMergeMPI::ValidationImpl() {
 }
 
 bool ShkrylevaSQSortSMergeMPI::PreProcessingImpl() {
-  GetOutput() = GetInput();
   return true;
 }
-
-namespace {
-
-void quickSort(std::vector<int> &arr, int left, int right) {
-  if (left >= right) {
-    return;
-  }
-
-  int pivot = arr[(left + right) / 2];
-  int i = left;
-  int j = right;
-
-  while (i <= j) {
-    while (arr[i] < pivot) {
-      ++i;
-    }
-    while (arr[j] > pivot) {
-      --j;
-    }
-
-    if (i <= j) {
-      std::swap(arr[i], arr[j]);
-      ++i;
-      --j;
-    }
-  }
-
-  if (left < j) {
-    quickSort(arr, left, j);
-  }
-  if (i < right) {
-    quickSort(arr, i, right);
-  }
-}
-
-}  // namespace
 
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank = 0;
@@ -65,47 +30,78 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   int total_size = 0;
-  std::vector<int> input;
-
   if (rank == 0) {
-    input = GetOutput();
-    total_size = static_cast<int>(input.size());
+    total_size = static_cast<int>(GetInput().size());
   }
 
   MPI_Bcast(&total_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  std::vector<int> sendcounts(size);
-  std::vector<int> displs(size);
-
-  int base = total_size / size;
-  int rem = total_size % size;
-
-  for (int i = 0; i < size; ++i) {
-    sendcounts[i] = base + (i < rem ? 1 : 0);
-    displs[i] = (i == 0 ? 0 : displs[i - 1] + sendcounts[i - 1]);
+  if (total_size == 0) {
+    GetOutput() = std::vector<int>();
+    return true;
   }
 
-  std::vector<int> local(sendcounts[rank]);
+  int base_chunk = total_size / size;
+  int remainder = total_size % size;
 
-  MPI_Scatterv(rank == 0 ? input.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT,
-               sendcounts[rank] > 0 ? local.data() : nullptr, sendcounts[rank], MPI_INT, 0, MPI_COMM_WORLD);
+  std::vector<int> send_counts(size, base_chunk);
+  std::vector<int> send_displs(size, 0);
 
-  if (!local.empty()) {
-    std::sort(local.begin(), local.end());
+  for (int i = 0; i < remainder; ++i) {
+    send_counts[i]++;
   }
 
-  std::vector<int> gathered;
-  if (rank == 0) {
-    gathered.resize(total_size);
+  for (int i = 1; i < size; ++i) {
+    send_displs[i] = send_displs[i - 1] + send_counts[i - 1];
   }
 
-  MPI_Gatherv(sendcounts[rank] > 0 ? local.data() : nullptr, sendcounts[rank], MPI_INT,
-              rank == 0 ? gathered.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
+  int local_size = send_counts[rank];
+  std::vector<int> local_data(local_size);
 
   if (rank == 0) {
-    std::sort(gathered.begin(), gathered.end());
-    GetOutput() = gathered;
+    MPI_Scatterv(GetInput().data(), send_counts.data(), send_displs.data(), MPI_INT, local_data.data(), local_size,
+                 MPI_INT, 0, MPI_COMM_WORLD);
+  } else {
+    MPI_Scatterv(nullptr, nullptr, nullptr, MPI_INT, local_data.data(), local_size, MPI_INT, 0, MPI_COMM_WORLD);
   }
+
+  if (!local_data.empty()) {
+    QuickSortIterative(local_data);
+  }
+
+  std::vector<int> result;
+
+  if (rank == 0) {
+    result.resize(total_size);
+  }
+
+  MPI_Gatherv(local_data.data(), local_size, MPI_INT, (rank == 0) ? result.data() : nullptr, send_counts.data(),
+              send_displs.data(), MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (rank == 0) {
+    for (int i = 1; i < size; ++i) {
+      int start = send_displs[i];
+      int end = start + send_counts[i];
+      std::inplace_merge(result.begin(), result.begin() + start, result.begin() + end);
+    }
+  }
+
+  int result_size = 0;
+  if (rank == 0) {
+    result_size = static_cast<int>(result.size());
+  }
+
+  MPI_Bcast(&result_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (rank != 0) {
+    result.resize(result_size);
+  }
+
+  if (result_size > 0) {
+    MPI_Bcast(result.data(), result_size, MPI_INT, 0, MPI_COMM_WORLD);
+  }
+
+  GetOutput() = result;
 
   return true;
 }

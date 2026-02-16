@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "shkryleva_s_qsort_smerge/common/include/common.hpp"
 #include "task/include/task.hpp"
 
@@ -13,7 +11,7 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
     return ppc::task::TypeOfTask::kMPI;
   }
 
-  explicit ShkrylevaSQSortSMergeMPI(const InType &inputVector);
+  explicit ShkrylevaSQSortSMergeMPI(const InType &in);
 
  private:
   bool ValidationImpl() override;
