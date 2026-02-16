@@ -5,7 +5,7 @@
 
 namespace shkryleva_s_qsort_smerge {
 
-ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType& inputData) {
+ShkrylevaSQSortSMergeSEQ::ShkrylevaSQSortSMergeSEQ(const InType &inputData) {
   SetTypeOfTask(GetStaticTypeOfTask());
   GetInput() = inputData;
   GetOutput() = {};
@@ -22,16 +22,22 @@ bool ShkrylevaSQSortSMergeSEQ::PreProcessingImpl() {
 
 namespace {
 
-void quickSort(std::vector<int>& arr, int left, int right) {
-  if (left >= right) return;
+void quickSort(std::vector<int> &arr, int left, int right) {
+  if (left >= right) {
+    return;
+  }
 
   int pivot = arr[(left + right) / 2];
   int i = left;
   int j = right;
 
   while (i <= j) {
-    while (arr[i] < pivot) ++i;
-    while (arr[j] > pivot) --j;
+    while (arr[i] < pivot) {
+      ++i;
+    }
+    while (arr[j] > pivot) {
+      --j;
+    }
 
     if (i <= j) {
       std::swap(arr[i], arr[j]);
@@ -40,8 +46,12 @@ void quickSort(std::vector<int>& arr, int left, int right) {
     }
   }
 
-  if (left < j) quickSort(arr, left, j);
-  if (i < right) quickSort(arr, i, right);
+  if (left < j) {
+    quickSort(arr, left, j);
+  }
+  if (i < right) {
+    quickSort(arr, i, right);
+  }
 }
 
 }  // namespace

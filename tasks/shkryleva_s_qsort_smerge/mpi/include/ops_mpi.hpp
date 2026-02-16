@@ -13,7 +13,7 @@ class ShkrylevaSQSortSMergeMPI : public BaseTask {
     return ppc::task::TypeOfTask::kMPI;
   }
 
-  explicit ShkrylevaSQSortSMergeMPI(const InType& inputVector);
+  explicit ShkrylevaSQSortSMergeMPI(const InType &inputVector);
 
  private:
   bool ValidationImpl() override;

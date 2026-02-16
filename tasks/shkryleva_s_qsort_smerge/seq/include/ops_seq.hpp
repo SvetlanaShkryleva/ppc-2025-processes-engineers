@@ -13,7 +13,7 @@ class ShkrylevaSQSortSMergeSEQ : public BaseTask {
     return ppc::task::TypeOfTask::kSEQ;
   }
 
-  explicit ShkrylevaSQSortSMergeSEQ(const InType& inputData);
+  explicit ShkrylevaSQSortSMergeSEQ(const InType &inputData);
 
  private:
   bool ValidationImpl() override;
