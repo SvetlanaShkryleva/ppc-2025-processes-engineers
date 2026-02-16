@@ -57,21 +57,25 @@ void quickSort(std::vector<int> &arr, int left, int right) {
 }
 
 }  // namespace
-
 bool ShkrylevaSQSortSMergeMPI::RunImpl() {
   int rank = 0;
   int size = 0;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int total_size = 0;
+  std::vector<int> input;
+
   if (rank == 0) {
-    total_size = static_cast<int>(GetOutput().size());
+    input = GetOutput();
   }
 
+  int total_size = static_cast<int>(input.size());
   MPI_Bcast(&total_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
   if (total_size == 0) {
+    if (rank == 0) {
+      GetOutput().clear();
+    }
     return true;
   }
 
@@ -88,7 +92,7 @@ bool ShkrylevaSQSortSMergeMPI::RunImpl() {
 
   std::vector<int> local(sendcounts[rank]);
 
-  MPI_Scatterv(rank == 0 ? GetOutput().data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, local.data(),
+  MPI_Scatterv(rank == 0 ? input.data() : nullptr, sendcounts.data(), displs.data(), MPI_INT, local.data(),
                sendcounts[rank], MPI_INT, 0, MPI_COMM_WORLD);
 
   if (!local.empty()) {
